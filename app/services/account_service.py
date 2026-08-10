@@ -1,5 +1,5 @@
-# Import the account classes that already exist in this package.
-from banking.Account import SavingsAccount, CheckingAccount
+# Import the account classes from their new location in app/models.
+from app.models.account import SavingsAccount, CheckingAccount
 
 # In-memory list acting as our accounts "database" for now.
 # Each entry will be a dictionary holding the account info plus an id.
