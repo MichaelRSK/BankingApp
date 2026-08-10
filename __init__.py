@@ -1,4 +1,4 @@
-from Account import *
+from banking.Account import *
 
 
 def runGeneralMenu(savings: Account, checking: Account):
