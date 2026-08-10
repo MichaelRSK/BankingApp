@@ -1,4 +1,4 @@
-from Account import *
+from banking.Account import *
 
 
 def transfer(withdrawAcc: Account, depositAcc: Account, amount: float):
