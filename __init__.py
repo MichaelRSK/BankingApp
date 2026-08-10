@@ -1,6 +1,11 @@
 from Account import *
 
 
+def transfer(withdrawAcc: Account, depositAcc: Account, amount: float):
+    if withdrawAcc.withdraw(amount):
+        depositAcc.deposit(amount)
+
+
 def runGeneralMenu(savings: Account, checking: Account):
 
     menu = """1. Savings account
@@ -17,14 +22,14 @@ def runGeneralMenu(savings: Account, checking: Account):
                           
 
         if selection == 1:
-            runAccountMenu(savings)
+            runAccountMenu(savings, checking)
         elif selection == 2:
-            runAccountMenu(checking)
+            runAccountMenu(checking, savings)
         elif selection == 3:
             running = False
 
 
-def runAccountMenu(account: Account):
+def runAccountMenu(selectedAccount: Account, unselectedAccount: Account):
     menu = """1. Check balance
 2. Deposit
 3. Withdraw
@@ -41,15 +46,16 @@ def runAccountMenu(account: Account):
 
 
         if selection == 1:
-            print(f"Account balance = ${account.get_balance():.2f}")
+            print(f"Account balance = ${selectedAccount.get_balance():.2f}")
         elif selection == 2:
             depositAmnt = float(input("Enter the amount to deposit: "))
-            account.deposit(depositAmnt)
+            selectedAccount.deposit(depositAmnt)
         elif selection == 3:
             withdrawAmnt = float(input("Enter the amount to withdraw: "))
-            account.withdraw(withdrawAmnt)
+            selectedAccount.withdraw(withdrawAmnt)
         elif selection == 4:
-            pass
+            transferAmnt = float(input("Enter the amount to transfer: "))
+            transfer(selectedAccount, unselectedAccount, transferAmnt)
         elif selection == 5:
             running = False
 

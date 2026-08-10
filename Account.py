@@ -36,13 +36,15 @@ class Account(ABC):
           
      # Tell the user there isn't enough money.     
             print("Insufficient funds.")
-            return
+            return False
         
       # Subtract the withdrawal amount from the balance.   
         self._balance -= amount
        
       # Display the amount withdrawn and the new balance. 
         print(f"Withdrew ${amount}. New balance: ${self._balance:.2f}")
+
+        return True
 
     # Method used to retrieve the current account balance.
     def get_balance(self):
