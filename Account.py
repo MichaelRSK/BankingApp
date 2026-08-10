@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 class Account(ABC):
-    def __init__(self, owner: str, balance: int):
+    def __init__(self, owner: str, balance: float = 0.0):
         self.owner = owner
         self._balance = balance # ENCAPSULATION
 
