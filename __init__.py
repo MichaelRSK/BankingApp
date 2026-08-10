@@ -12,7 +12,7 @@ def runGeneralMenu(savings: Account, checking: Account):
     while running:
         print(menu)
 
-        while not (1 <= (selection := int(input("Enter a valid number from the menu options above: ")) <= 3)):
+        while not (1 <= (selection := int(input("Enter a valid number from the menu options above: "))) <= 3):
             print("Invalid option, try again.")
                           
 
@@ -36,12 +36,12 @@ def runAccountMenu(account: Account):
     while running:
         print(menu)
 
-        while  not (1 <= (selection := int(input("Enter a valid number from the menu options above: ")) <= 3)):
+        while  not (1 <= (selection := int(input("Enter a valid number from the menu options above: "))) <= 5):
             print("Invalid option, try again.")
-                          
+
 
         if selection == 1:
-            print(f"Account balance = ${account.getBalance():.2f}")
+            print(f"Account balance = ${account.get_balance():.2f}")
         elif selection == 2:
             depositAmnt = float(input("Enter the amount to deposit: "))
             account.deposit(depositAmnt)
@@ -57,8 +57,9 @@ def runAccountMenu(account: Account):
 
 
 def main():
-    savings = SavingsAccount()
-    checking = CheckingAccount()
+    owner = "John"
+    savings = SavingsAccount(owner, 500.0)
+    checking = CheckingAccount(owner, 500.0)
 
     runGeneralMenu(savings, checking)
 
