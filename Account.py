@@ -11,6 +11,3 @@ class SavingsAccount(Account):
 
 class CheckingAccount(Account):
     pass
-
-class User:
-    pass
