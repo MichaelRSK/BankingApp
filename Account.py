@@ -1,76 +1,74 @@
+# Import ABC (Abstract Base Class) and abstractmethod from Python's abc module.
+# ABC allows us to create an abstract class, and abstractmethod allows us
+# to define methods that subclasses are required to implement.
 from abc import ABC, abstractmethod
 
-class Account(ABC):
-    def __init__(self, owner: str, balance: float = 0.0):
-        self.owner = owner
-        self._balance = balance # ENCAPSULATION because _balance is a private attribute
 
+# Account inherits from ABC.
+# This makes Account an Abstract Base Class.
+# ABSTRACTION: Account provides the general structure/behavior of an account
+# without requiring us to create a specific type of account here.
+class Account(ABC):
+    # Constructor method that runs when an Account object is created.
+    # owner is expected to be a string.
+    # balance is expected to be a floating-point number and defaults to 0.0. 
+    def __init__(self, owner: str, balance: float = 0):
+        self.owner = owner
+        self._balance = balance  # ENCAPSULATION: protected, accessed via methods only
+
+    # Store the account owner's name.
     def deposit(self, amount):
+        # Check whether the amount being deposited is zero or negative. 
         if amount <= 0:
+            # Tell the user that the deposit amount must be positive.
             print("Deposit amount must be positive.")
             return
+        # Add the deposit amount to the account's balance.
         self._balance += amount
-        print(f"Deposited ${amount:.2f}. New balance: ${self._balance:.2f}")
+        print(f"Deposited ${amount}. New balance: ${self._balance:.2f}")
+
+    # Method used to withdraw money from the account.
     def withdraw(self, amount):
-        if amount <= 0:
-            print("Withdrawal amount must be positive.")
-            return
+    
+     # Check whether the person is trying to withdraw more money
+     # than they currently have in the account.
         if amount > self._balance:
+          
+     # Tell the user there isn't enough money.     
             print("Insufficient funds.")
             return
+        
+      # Subtract the withdrawal amount from the balance.   
         self._balance -= amount
-        print(f"Withdrew ${amount:.2f}. New balance: ${self._balance:.2f}")
+       
+      # Display the amount withdrawn and the new balance. 
+        print(f"Withdrew ${amount}. New balance: ${self._balance:.2f}")
 
+    # Method used to retrieve the current account balance.
     def get_balance(self):
         return self._balance
-    
+
+
+     # @abstractmethod marks account_type() as an abstract method.
+    # ABSTRACTION: Every concrete account subclass must provide its
+    # own implementation of account_type().
     @abstractmethod
+   
+   # Define the abstract account_type method.
     def account_type(self):
         pass  # every subclass MUST implement this
 
 
-# INHERITANCE: SavingsAccount inherits from Account
+# SavingsAccount inherits from Account.
+# INHERITANCE: SavingsAccount receives Account's attributes and methods,
+# such as owner, _balance, deposit(), withdraw(), and get_balance().
 class SavingsAccount(Account):
-    def __init__(self, owner, balance=0, interest_rate=0.02):
-        super().__init__(owner, balance)
-        self.interest_rate = interest_rate
-
-    def add_interest(self):
-        interest = self._balance * self.interest_rate
-        self._balance += interest
-        print(f"Interest added: ${interest:.2f}. New balance: ${self._balance:.2f}")
-
     def account_type(self):  # POLYMORPHISM: same method name, different result
         return "Savings"
 
-# INHERITANCE: CheckingAccount inherits from Account
+
+# CheckingAccount also inherits from Account.
+# INHERITANCE: CheckingAccount receives Account's existing functionality.
 class CheckingAccount(Account):
-    def __init__(self, owner, balance=0, overdraft_limit=50):
-        super().__init__(owner, balance)
-        self.overdraft_limit = overdraft_limit
-
-    def withdraw(self, amount):  # overrides parent's withdraw (also polymorphism)
-        if amount <= 0:
-            print("Withdrawal amount must be positive.")
-            return
-        if amount > self._balance + self.overdraft_limit:
-            print("Exceeds overdraft limit.")
-            return
-        self._balance -= amount
-        print(f"Withdrew ${amount:.2f}. New balance: ${self._balance:.2f}")
-
     def account_type(self):
         return "Checking"
-
-class User:
-    def __init__(self, name):
-        self.name = name
-        self.accounts = []
-
-    def add_account(self, account: Account):
-        self.accounts.append(account)
-        print(f"Account of type '{account.account_type()}' added for user '{self.name}'.")
-
-    def get_total_balance(self):
-        total = sum(account.get_balance() for account in self.accounts)
-        return total
