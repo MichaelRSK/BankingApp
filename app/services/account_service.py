@@ -13,7 +13,10 @@ next_account_id = 1
 # owner is the account holder's name.
 # account_type is either "Savings" or "Checking".
 # balance is the starting balance, defaults to 0.
-def create_account(owner: str, account_type: str, balance: float = 0):
+# branch_id is the branch this account belongs to. It defaults to None so
+# accounts can still be opened without one, but an account needs a branch
+# before it can show up in filter_accounts() below.
+def create_account(owner: str, account_type: str, balance: float = 0, branch_id: int = None):
     global next_account_id  # needed since we are reassigning it below
 
     # Pick which class to instantiate based on the requested account_type.
@@ -31,6 +34,7 @@ def create_account(owner: str, account_type: str, balance: float = 0):
         "owner": new_account.owner,
         "balance": new_account.get_balance(),
         "account_type": new_account.account_type(),
+        "branch_id": branch_id,
     }
 
     # Save the record and bump the id counter for the next account.
@@ -38,3 +42,25 @@ def create_account(owner: str, account_type: str, balance: float = 0):
     next_account_id += 1
 
     return account_record
+
+
+# Returns every account that belongs to the given branch AND holds at least
+# min_balance. Both conditions have to be true for an account to be included.
+# branch_id is the branch we are filtering on.
+# min_balance is the smallest balance an account can have and still match.
+def filter_accounts(branch_id: int, min_balance: float):
+    matching_accounts = []
+
+    for account in accounts_db:
+        # Skip accounts that belong to a different branch. Accounts opened
+        # without a branch have None here, so they never match.
+        if account["branch_id"] != branch_id:
+            continue
+
+        # Skip accounts that do not hold enough money.
+        if account["balance"] < min_balance:
+            continue
+
+        matching_accounts.append(account)
+
+    return matching_accounts

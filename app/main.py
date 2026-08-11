@@ -10,7 +10,7 @@ from app.controllers.transaction_controller import router as transaction_router
 # Import the router that holds the /api/v1/customers endpoints.
 from app.controllers.customer_controller import router as customer_router
 
-# Create the FastAPI application.
+# Create the FastAPI application.   
 app = FastAPI()
 
 # Register the account router so its routes become part of the app.
