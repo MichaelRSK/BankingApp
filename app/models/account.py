@@ -9,12 +9,24 @@ from abc import ABC, abstractmethod
 # ABSTRACTION: Account provides the general structure/behavior of an account
 # without requiring us to create a specific type of account here.
 class Account(ABC):
+    
+    # Class level counter used to hand out a unique account number to
+    # every new account, shared across all Account instances.
+    _next_account_number = 1000
+
     # Constructor method that runs when an Account object is created.
     # owner is expected to be a string.
+    # owner_id links this account back to the Customer that owns it.
     # balance is expected to be a floating-point number and defaults to 0.0. 
-    def __init__(self, owner: str, balance: float = 0):
+    def __init__(self, owner: str, owner_id: int,balance: float = 0):
         self.owner = owner
+        self.owner_id = owner_id 
         self._balance = balance  # ENCAPSULATION: protected, accessed via methods only
+
+        # Assign this account the current counter value as its account number,
+        # then bump the counter so the next account gets a different one.
+        self.account_number = Account._next_account_number
+        Account._next_account_number += 1
 
     # Store the account owner's name.
     def deposit(self, amount):
