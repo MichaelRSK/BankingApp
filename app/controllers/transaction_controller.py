@@ -1,13 +1,16 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from app.db.session import get_db
 
 # Import the service functions that contain the actual logic.
 from app.services.transaction_service import record_transfer, filter_transactions
 
-# Accounts now come out of MongoDB instead of the hardcoded dictionary that
-# used to sit in this file, so we go through the account service to read
-# them and to move the money.
-from app.services.account_service import get_account, adjust_balance
+# Accounts come out of PostgreSQL now. get_account_for_update also locks the
+# row it reads, which is what keeps two simultaneous transfers from stepping
+# on each other.
+from app.services.account_service import get_account_for_update
 
 
 # Router for transaction-related API endpoints
@@ -26,7 +29,7 @@ class TransferRequest(BaseModel):
 
 # Transfers money from one account to another
 @router.post("/transfer")
-def transfer_money(transfer: TransferRequest):
+def transfer_money(transfer: TransferRequest, db: Session = Depends(get_db)):
 
     # A transfer cannot be zero or negative
     if transfer.amount <= 0:
@@ -42,11 +45,18 @@ def transfer_money(transfer: TransferRequest):
             detail="Cannot transfer to the same account"
         )
 
-    # Look the accounts up in the database using the IDs from the request.
-    # These come back as plain dictionaries, so a balance is read with
-    # source_account["balance"] rather than the old get_balance() call.
-    source_account = get_account(transfer.from_account_id)
-    destination_account = get_account(transfer.to_account_id)
+    # Load and lock both accounts, always in ascending id order.
+    #
+    # The order matters. If one transfer locked account 1 then account 2,
+    # while another locked 2 then 1, each would sit waiting for the row the
+    # other holds and neither would ever finish. That is a deadlock, and
+    # always taking the locks in the same order makes it impossible.
+    locked_accounts = {}
+    for account_id in sorted([transfer.from_account_id, transfer.to_account_id]):
+        locked_accounts[account_id] = get_account_for_update(db, account_id)
+
+    source_account = locked_accounts[transfer.from_account_id]
+    destination_account = locked_accounts[transfer.to_account_id]
 
     # Make sure both accounts exist before attempting the transfer
     if source_account is None:
@@ -62,20 +72,26 @@ def transfer_money(transfer: TransferRequest):
         )
 
     # Make sure the source account has enough money
-    if source_account["balance"] < transfer.amount:
+    if source_account.get_balance() < transfer.amount:
         raise HTTPException(
             status_code=400,
             detail="Insufficient funds"
         )
 
     # Remove the money from the source account and add it to the destination.
-    # A negative amount is a withdrawal, a positive one is a deposit. Each
-    # call writes straight to MongoDB and hands back the updated account.
-    updated_source = adjust_balance(transfer.from_account_id, -transfer.amount)
-    updated_destination = adjust_balance(transfer.to_account_id, transfer.amount)
+    # These are the same withdraw() and deposit() methods from Module 1.
+    # SQLAlchemy notices the balances changed and writes them out on commit.
+    source_account.withdraw(transfer.amount)
+    destination_account.deposit(transfer.amount)
 
     # Record the completed transfer so it shows up in the history endpoint
-    record_transfer(transfer.from_account_id, transfer.to_account_id, transfer.amount)
+    record_transfer(db, transfer.from_account_id, transfer.to_account_id, transfer.amount)
+
+    # One commit saves all three changes together. If anything above had
+    # raised, the session would be closed without committing and PostgreSQL
+    # would roll the whole thing back, so money can never go missing
+    # halfway through.
+    db.commit()
 
     # Return the transfer information and updated balances
     return {
@@ -83,8 +99,8 @@ def transfer_money(transfer: TransferRequest):
         "from_account_id": transfer.from_account_id,
         "to_account_id": transfer.to_account_id,
         "amount": transfer.amount,
-        "source_balance": updated_source["balance"],
-        "destination_balance": updated_destination["balance"]
+        "source_balance": float(source_account.get_balance()),
+        "destination_balance": float(destination_account.get_balance())
     }
 
 
@@ -93,7 +109,7 @@ def transaction_to_response(transaction):
     return {
         "id": transaction.transaction_id,
         "type": transaction.transaction_type,
-        "amount": transaction.amount,
+        "amount": float(transaction.amount),
         "from_account_id": transaction.from_account_id,
         "to_account_id": transaction.to_account_id,
         "timestamp": transaction.timestamp.isoformat(),
@@ -105,9 +121,9 @@ def transaction_to_response(transaction):
 # start_date and type are query parameters, FastAPI reads them from the URL
 # because they are not part of the path and not a request body.
 @router.get("")
-def get_filtered_transactions(start_date: str, type: str):
+def get_filtered_transactions(start_date: str, type: str, db: Session = Depends(get_db)):
     # Call the service layer to do the actual filtering.
-    matching_transactions = filter_transactions(start_date, type)
+    matching_transactions = filter_transactions(db, start_date, type)
 
     # The service returns None when start_date was not a real date.
     if matching_transactions is None:

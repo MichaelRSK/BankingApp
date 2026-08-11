@@ -1,7 +1,12 @@
 # APIRouter lets us define routes separately and plug them into main.py's app.
-from fastapi import APIRouter, HTTPException
+# Depends is how FastAPI hands a database session to an endpoint.
+from fastapi import APIRouter, HTTPException, Depends
 # BaseModel is used to define the shape of the incoming request body.
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+# get_db opens a session for this request and closes it afterwards.
+from app.db.session import get_db
 
 # Import the service functions that contain the actual logic.
 from app.services.customer_service import (
@@ -22,7 +27,9 @@ router = APIRouter()
 class CustomerCreateRequest(BaseModel):
     name: str = None
     email: str = None
-    branch_id: str = None
+    # This was a str before. It is an integer now because it points at
+    # branches.id, and Account.branch_id was already an int.
+    branch_id: int = None
 
 
 # Defines what the request body must look like when updating a customer.
@@ -46,13 +53,13 @@ def customer_to_response(customer):
 # POST /api/v1/customers
 # Creates a new customer using the data sent in the request body.
 @router.post("/api/v1/customers", status_code=201)
-def add_customer(request: CustomerCreateRequest):
+def add_customer(request: CustomerCreateRequest, db: Session = Depends(get_db)):
     # Both name and email are required to create a customer.
     if not request.name or not request.email:
         raise HTTPException(status_code=400, detail="name and email are required")
 
     # Call the service layer to do the actual work of creating the customer.
-    new_customer = create_customer(request.name, request.email, request.branch_id)
+    new_customer = create_customer(db, request.name, request.email, request.branch_id)
 
     return customer_to_response(new_customer)
 
@@ -60,8 +67,8 @@ def add_customer(request: CustomerCreateRequest):
 # GET /api/v1/customers
 # Returns every customer we currently have stored.
 @router.get("/api/v1/customers")
-def get_all_customers():
-    customers = list_customers()
+def get_all_customers(db: Session = Depends(get_db)):
+    customers = list_customers(db)
 
     # Shape each customer for the response.
     return [customer_to_response(customer) for customer in customers]
@@ -70,8 +77,8 @@ def get_all_customers():
 # GET /api/v1/customers/{customer_id}
 # Returns a single customer by id.
 @router.get("/api/v1/customers/{customer_id}")
-def get_customer_by_id(customer_id: int):
-    customer = get_customer(customer_id)
+def get_customer_by_id(customer_id: int, db: Session = Depends(get_db)):
+    customer = get_customer(db, customer_id)
 
     # If the service returned None, no customer has that id.
     if customer is None:
@@ -83,8 +90,8 @@ def get_customer_by_id(customer_id: int):
 # PUT /api/v1/customers/{customer_id}
 # Updates the name and/or email of an existing customer.
 @router.put("/api/v1/customers/{customer_id}")
-def edit_customer(customer_id: int, request: CustomerUpdateRequest):
-    updated_customer = update_customer(customer_id, request.name, request.email)
+def edit_customer(customer_id: int, request: CustomerUpdateRequest, db: Session = Depends(get_db)):
+    updated_customer = update_customer(db, customer_id, request.name, request.email)
 
     # If the service returned None, no customer has that id.
     if updated_customer is None:
@@ -96,8 +103,8 @@ def edit_customer(customer_id: int, request: CustomerUpdateRequest):
 # DELETE /api/v1/customers/{customer_id}
 # Deactivates the customer instead of removing them from storage.
 @router.delete("/api/v1/customers/{customer_id}")
-def remove_customer(customer_id: int):
-    was_deactivated = deactivate_customer(customer_id)
+def remove_customer(customer_id: int, db: Session = Depends(get_db)):
+    was_deactivated = deactivate_customer(db, customer_id)
 
     # If the service returned False, no customer has that id.
     if not was_deactivated:
