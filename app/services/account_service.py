@@ -13,7 +13,7 @@ from app.models.account import Account, SavingsAccount, CheckingAccount
 # owner_id links this account back to the Customer that owns it.
 # account_type is either "Savings" or "Checking".
 # balance is the starting balance, defaults to 0.
-# branch_id is the branch this account belongs to. It defaults to None so
+# branch_code is the branch this account belongs to. It defaults to None so
 # accounts can still be opened without one, but an account needs a branch
 # before it can show up in filter_accounts() below.
 def create_account(
@@ -22,7 +22,7 @@ def create_account(
     owner_id: int,
     account_type: str,
     balance: float = 0,
-    branch_id: int = None,
+    branch_code: int = None,
 ):
     # Pick which class to instantiate based on the requested account_type.
     # Which class we pick is also what fills in the "type" column, because
@@ -35,7 +35,7 @@ def create_account(
         # Return None so the controller knows the request was invalid.
         return None
 
-    new_account.branch_id = branch_id
+    new_account.branch_code = branch_code
 
     # add() stages the object, commit() writes it and ends the transaction.
     db.add(new_account)
@@ -51,15 +51,15 @@ def create_account(
 
 # Returns every account that belongs to the given branch AND holds at least
 # min_balance. Both conditions have to be true for an account to be included.
-# branch_id is the branch we are filtering on.
+# branch_code is the branch we are filtering on.
 # min_balance is the smallest balance an account can have and still match.
-def filter_accounts(db: Session, branch_id: int, min_balance: float):
+def filter_accounts(db: Session, branch_code: int, min_balance: float):
     # Two filter() calls chained together means AND, which is the same
     # behaviour the original loop had when it skipped non-matching accounts.
     # The comparison runs inside PostgreSQL, so only matching rows come back.
     return (
         db.query(Account)
-        .filter(Account.branch_id == branch_id)
+        .filter(Account.branch_code == branch_code)
         .filter(Account._balance >= min_balance)
         .all()
     )

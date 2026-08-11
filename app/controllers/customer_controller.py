@@ -27,9 +27,9 @@ router = APIRouter()
 class CustomerCreateRequest(BaseModel):
     name: str = None
     email: str = None
-    # This was a str before. It is an integer now because it points at
-    # branches.id, and Account.branch_id was already an int.
-    branch_id: int = None
+    # Points at branches.branch_code, the branch table's primary key. This
+    # was a str before and never lined up with the accounts table.
+    branch_code: int = None
 
 
 # Defines what the request body must look like when updating a customer.
@@ -45,7 +45,7 @@ def customer_to_response(customer):
         "id": customer.customer_id,
         "name": customer.name,
         "email": customer.email,
-        "branch_id": customer.branch_id,
+        "branch_code": customer.branch_code,
         "is_active": customer.is_active,
     }
 
@@ -59,7 +59,7 @@ def add_customer(request: CustomerCreateRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="name and email are required")
 
     # Call the service layer to do the actual work of creating the customer.
-    new_customer = create_customer(db, request.name, request.email, request.branch_id)
+    new_customer = create_customer(db, request.name, request.email, request.branch_code)
 
     return customer_to_response(new_customer)
 

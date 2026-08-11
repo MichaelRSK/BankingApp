@@ -28,7 +28,7 @@ class AccountCreateRequest(BaseModel):
     owner_id: int  # links this account to a Customer's ID, required
     account_type: str  # expected to be "Savings" or "Checking"
     balance: float = 0  # optional, defaults to 0 if not provided
-    branch_id: int = None  # optional, the branch the account belongs to
+    branch_code: int = None  # optional, the branch the account belongs to
 
 
 # Turns an Account object into a plain dictionary for the JSON response.
@@ -47,7 +47,7 @@ def account_to_response(account):
         "balance": float(account.get_balance()),
         # POLYMORPHISM: the object knows its own type, we do not check it.
         "account_type": account.account_type(),
-        "branch_id": account.branch_id,
+        "branch_code": account.branch_code,
     }
 
 
@@ -55,14 +55,14 @@ def account_to_response(account):
 # Opens a new account using the data sent in the request body.
 @router.post("/api/v1/accounts")
 def open_account(request: AccountCreateRequest, db: Session = Depends(get_db)):
-    # owner_id and branch_id are foreign keys now, so PostgreSQL rejects the
+    # owner_id and branch_code are foreign keys now, so PostgreSQL rejects the
     # insert outright if they name rows that do not exist. Checking here
     # turns what would surface as a 500 into a clear 404.
     if get_customer(db, request.owner_id) is None:
         raise HTTPException(status_code=404, detail="Customer not found for owner_id")
 
-    if request.branch_id is not None and get_branch(db, request.branch_id) is None:
-        raise HTTPException(status_code=404, detail="Branch not found for branch_id")
+    if request.branch_code is not None and get_branch(db, request.branch_code) is None:
+        raise HTTPException(status_code=404, detail="Branch not found for branch_code")
 
     # Call the service layer to do the actual work of creating the account.
     account = create_account(
@@ -71,7 +71,7 @@ def open_account(request: AccountCreateRequest, db: Session = Depends(get_db)):
         request.owner_id,
         request.account_type,
         request.balance,
-        request.branch_id,
+        request.branch_code,
     )
 
     # If the service returned None, the account_type was invalid.
@@ -82,18 +82,18 @@ def open_account(request: AccountCreateRequest, db: Session = Depends(get_db)):
     return account_to_response(account)
 
 
-# GET /api/v1/accounts?branch_id=123&min_balance=1000
+# GET /api/v1/accounts?branch_code=12345&min_balance=1000
 # Returns the accounts at a branch that hold at least min_balance.
-# branch_id and min_balance are query parameters, FastAPI reads them from
+# branch_code and min_balance are query parameters, FastAPI reads them from
 # the URL because they are not part of the path and not a request body.
 @router.get("/api/v1/accounts")
-def get_filtered_accounts(branch_id: int, min_balance: float, db: Session = Depends(get_db)):
+def get_filtered_accounts(branch_code: int, min_balance: float, db: Session = Depends(get_db)):
     # A balance cannot be negative, so neither can the minimum we filter on.
     if min_balance < 0:
         raise HTTPException(status_code=400, detail="min_balance cannot be negative")
 
     # Call the service layer to do the actual filtering.
-    matching_accounts = filter_accounts(db, branch_id, min_balance)
+    matching_accounts = filter_accounts(db, branch_code, min_balance)
 
     # An empty list is a valid answer here, it just means nothing matched.
     return [account_to_response(account) for account in matching_accounts]

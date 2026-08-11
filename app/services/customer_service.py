@@ -8,10 +8,10 @@ from app.models.customer import Customer
 # db is the database session.
 # name is the customer's full name.
 # email is the customer's email address.
-# branch_id is the branch the customer belongs to. This is an integer now,
-# because it points at branches.id. It used to be a string.
-def create_customer(db: Session, name: str, email: str, branch_id: int = None):
-    new_customer = Customer(name, email, branch_id)
+# branch_code is the branch the customer belongs to. It points at
+# branches.branch_code, the branch table's primary key.
+def create_customer(db: Session, name: str, email: str, branch_code: int = None):
+    new_customer = Customer(name, email, branch_code)
 
     db.add(new_customer)
     db.commit()
