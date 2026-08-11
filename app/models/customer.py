@@ -24,6 +24,10 @@ class Customer:
         self.email = email
         self.branch_id = branch_id
 
+        # Customers are active when they are first created. We deactivate
+        # instead of deleting so the customer's history is never lost.
+        self.is_active = True
+
         # A customer can hold several accounts (Savings, Checking, etc.).
         # We store the actual Account objects here.
         self.accounts = []
@@ -32,6 +36,18 @@ class Customer:
     @property
     def customer_id(self):
         return self._customer_id
+
+    # Updates the customer's details. Only the arguments that were actually
+    # passed in get changed, anything left as None is kept as it was.
+    def update_info(self, name: str = None, email: str = None):
+        if name is not None:
+            self.name = name
+        if email is not None:
+            self.email = email
+
+    # Marks the customer as inactive rather than removing them.
+    def deactivate(self):
+        self.is_active = False
 
     # Links an account to this customer.
     def add_account(self, account):
