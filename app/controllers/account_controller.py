@@ -14,6 +14,7 @@ router = APIRouter()
 # FastAPI uses this to validate incoming JSON automatically.
 class AccountCreateRequest(BaseModel):
     owner: str
+    owner_id: int  # links this account to a Customer's ID
     account_type: str  # expected to be "Savings" or "Checking"
     balance: float = 0  # optional, defaults to 0 if not provided
     branch_id: int = None  # optional, the branch the account belongs to
@@ -25,7 +26,7 @@ class AccountCreateRequest(BaseModel):
 def open_account(request: AccountCreateRequest):
     # Call the service layer to do the actual work of creating the account.
     account_record = create_account(
-        request.owner, request.account_type, request.balance, request.branch_id
+        request.owner, request.owner_id, request.account_type, request.balance, request.branch_id
     )
 
     # If the service returned None, the account_type was invalid.
