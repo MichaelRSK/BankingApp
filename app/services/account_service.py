@@ -69,7 +69,7 @@ def filter_accounts(db: Session, branch_id: int, min_balance: float):
 # Returns None when there is no account with that id, so callers can decide
 # how to report it.
 def get_account(db: Session, account_id: int):
-    return db.query(Account).filter(Account.id == account_id).first()
+    return db.query(Account).filter(Account.account_number == account_id).first()
 
 
 # Same lookup as get_account, but locks the row until the current
@@ -83,7 +83,7 @@ def get_account(db: Session, account_id: int):
 def get_account_for_update(db: Session, account_id: int):
     return (
         db.query(Account)
-        .filter(Account.id == account_id)
+        .filter(Account.account_number == account_id)
         .with_for_update()
         .first()
     )
