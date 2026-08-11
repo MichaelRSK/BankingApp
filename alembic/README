@@ -1,0 +1,232 @@
+================================================================================
+DATABASE MIGRATION NOTES  --  MongoDB has been replaced with PostgreSQL
+================================================================================
+
+Read this before you pull. The app no longer runs without a local PostgreSQL
+server, and there are setup steps you have to do once by hand.
+
+Everything in this folder is Alembic, the tool that versions our database
+schema. Alembic tracks changes to TABLES, not to the rows inside them.
+
+
+--------------------------------------------------------------------------------
+1. WHAT CHANGED
+--------------------------------------------------------------------------------
+
+MongoDB is gone. So are the in-memory lists.
+
+  BEFORE                                AFTER
+  ------                                -----
+  pymongo + MongoClient                 SQLAlchemy 2.x ORM
+  app/database.py                       app/db/session.py + app/db/base.py
+  accounts_collection.find(...)         db.query(Account).filter(...)
+  accounts_db = []   (in memory)        accounts table in PostgreSQL
+  customers_db = []  (in memory)        customers table
+  transactions_db = [] (in memory)      transactions table
+  Branch class, never stored            branches table + staff table
+
+Only accounts had ever been wired into Mongo. Customers, transactions and
+branches were still Python lists that emptied every time the server
+restarted, so those are now persisted for the first time.
+
+Plain classes became SQLAlchemy models. The Module 1 object design survives:
+inheritance, encapsulation and polymorphism all still work, and the business
+methods (deposit, withdraw, get_balance, account_type, update_info,
+deactivate, get_total_balance, staff_to_manager_ratio) are unchanged.
+
+One thing did degrade. Account can no longer inherit from ABC, because
+Python cannot combine ABCMeta with SQLAlchemy's declarative metaclass on the
+same class. account_type() raises NotImplementedError instead, so a subclass
+that forgets to implement it still fails loudly, just when the method is
+called rather than when the object is built.
+
+Merged in from branch 02-qays:
+  - owner_id     required on every account, foreign key to customers.id
+  - account_number  customer-facing number, starts at 1000
+
+Note that 02-qays's owner_id and the customer_id column added during the
+Postgres migration were the same idea. They were merged into ONE column
+named owner_id. There is no customer_id column.
+
+
+--------------------------------------------------------------------------------
+2. FIRST-TIME SETUP  (do this once)
+--------------------------------------------------------------------------------
+
+Step 1. Install PostgreSQL 18
+   https://www.postgresql.org/download/windows/
+   During the installer:
+     - keep the default port 5432
+     - remember the password you set for the "postgres" user
+     - UNCHECK "Launch Stack Builder" on the last screen, we do not need it
+
+Step 2. Install the Python packages
+   pip install -r requirements.txt
+
+Step 3. Create the database
+   Open pgAdmin (installed with PostgreSQL) and create a database called
+   bankingapp. Or from a terminal:
+
+     "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -h localhost
+     CREATE DATABASE bankingapp;
+     \q
+
+Step 4. Make your .env file
+   Copy .env.example to .env, then put your own postgres password in it.
+
+     copy .env.example .env
+
+   .env is in .gitignore and must stay that way. Do not commit your password.
+   .env.example is the committed copy and holds a placeholder instead.
+
+Step 5. Build the tables
+   python -m alembic upgrade head
+
+   This creates all five tables plus the account_number sequence. You do not
+   write any CREATE TABLE statements yourself, the migrations do it.
+
+Step 6. Run it
+   python -m uvicorn app.main:app --reload
+
+Use "python -m alembic", not bare "alembic". pip installs alembic.exe into a
+Scripts folder that is usually not on PATH on Windows.
+
+
+--------------------------------------------------------------------------------
+3. EVERYDAY ALEMBIC COMMANDS
+--------------------------------------------------------------------------------
+
+  python -m alembic upgrade head      apply every migration you do not have
+  python -m alembic current           which migration your database is on
+  python -m alembic history           list all migrations
+  python -m alembic downgrade -1      undo the most recent migration
+
+After you pull from git, run "upgrade head". If someone added a migration
+and you skip this, your code will expect columns your database does not have
+and you will get confusing errors.
+
+CHANGED A MODEL? Generate a migration for it:
+
+  python -m alembic revision --autogenerate -m "short description"
+
+Then OPEN THE GENERATED FILE AND READ IT before running upgrade. Autogenerate
+guesses, and it gets things wrong. See section 6.
+
+
+--------------------------------------------------------------------------------
+4. THE SCHEMA
+--------------------------------------------------------------------------------
+
+  branches        id, branch_code (unique), location, manager_id
+  staff           id, name, branch_id -> branches.id
+  customers       id, name, email, branch_id -> branches.id, is_active
+  accounts        id, account_number (unique), owner, balance, type,
+                  branch_id -> branches.id, owner_id -> customers.id
+  transactions    id, transaction_type, amount, timestamp,
+                  from_account_id -> accounts.id, to_account_id -> accounts.id
+
+Things worth knowing:
+
+  "type" on accounts is the discriminator column. It holds "Savings" or
+  "Checking" and is how SQLAlchemy knows whether to build a SavingsAccount
+  or a CheckingAccount when loading a row. It is named "type" and not
+  "account_type" so it does not collide with the account_type() method.
+
+  Money is numeric(12,2), not float. Floats cannot store 0.10 exactly and
+  the error compounds. In Python this means balances come back as Decimal,
+  not float, so the controllers call float() when building JSON responses.
+  Maximum balance is 9,999,999,999.99.
+
+  account_number comes from a PostgreSQL sequence starting at 1000. Module 1
+  used a class counter, which restarted at 1000 every time the server did and
+  would have handed the same number to two different accounts.
+
+  All the ID counters that used to live in Python are gone for the same
+  reason. PostgreSQL assigns ids now.
+
+
+--------------------------------------------------------------------------------
+5. API CHANGES THAT WILL BREAK OLD REQUESTS
+--------------------------------------------------------------------------------
+
+POST /api/v1/accounts
+  - owner_id is now REQUIRED. Leaving it out gives a 422.
+  - the customer named by owner_id must already exist, or you get a 404.
+  - branch_id is still optional, but if you send one the branch must exist.
+  - the response now includes account_number and owner_id.
+
+POST /api/v1/customers
+  - branch_id is an INTEGER now, it used to be a string. Send 1, not "1".
+    It had to change because it points at branches.id, and accounts had
+    always used an integer.
+
+GET /api/v1/transactions
+  - this actually returns data now. It always returned an empty list before,
+    because transactions lived in a list that was wiped on every restart.
+
+There is NO branch endpoint yet. Branches can only be created by calling
+app/services/branch_service.py directly. Since accounts and customers both
+point at a branch, somebody needs to build branch_controller.py.
+
+Transfers are now atomic. Both balance changes and the history row are
+written in a single commit, and the two account rows are locked in ascending
+id order while it happens. Under Mongo a crash halfway through a transfer
+could leave money withdrawn but never deposited.
+
+
+--------------------------------------------------------------------------------
+6. GOTCHAS
+--------------------------------------------------------------------------------
+
+sqlalchemy.url in alembic.ini is deliberately blank.
+  alembic.ini is committed to git, so a real connection string there would
+  publish the database password. alembic/env.py reads DATABASE_URL out of
+  .env instead and fills the value in at runtime. Leave the line empty.
+
+Migration 76e20500de2e was edited by hand. Do not regenerate it.
+  Autogenerate produced a column defaulting to nextval('account_number_seq')
+  but never emitted the CREATE SEQUENCE, so the migration failed on the first
+  run. The CreateSequence and DropSequence calls were added manually.
+  Autogenerate also left both new constraints unnamed, which meant the
+  downgrade had no name to drop them by, so they were named explicitly.
+  The lesson: always read a generated migration before applying it.
+
+Autogenerate cannot see a model that nobody imported.
+  If you add a new model file, import it in app/models/__init__.py. Alembic
+  compares your models against the database, and a model it never imported
+  looks like a table that should be DROPPED.
+
+Deleting rows does not reset the id sequence.
+  Delete every account and the next one still gets the id after the highest
+  one you deleted. This is normal, do not try to fix it.
+
+MongoDB is still installed on machines that had it.
+  Nothing references it any more. You can stop the service and drop the old
+  bankingapp database whenever you like.
+
+
+--------------------------------------------------------------------------------
+7. WHERE THINGS LIVE
+--------------------------------------------------------------------------------
+
+  app/db/base.py         Base class every model inherits from
+  app/db/session.py      engine, SessionLocal, and the get_db() dependency
+  app/models/            SQLAlchemy models (were plain classes)
+  app/services/          query the database, each takes a db session
+  app/controllers/       endpoints, get a session via Depends(get_db)
+  alembic/versions/      the migrations themselves
+  .env                   your real password, never committed
+  .env.example           the template, committed
+
+Services take a session as their FIRST argument now:
+
+  BEFORE   create_account(owner, account_type, balance, branch_id)
+  AFTER    create_account(db, owner, owner_id, account_type, balance, branch_id)
+
+Controllers get that session from FastAPI:
+
+  def open_account(request: AccountCreateRequest, db: Session = Depends(get_db)):
+
+Services do not commit during a transfer. record_transfer() only stages its
+row, and the controller commits once at the end. That is what makes the whole
+transfer succeed or fail as one unit. Keep it that way.
