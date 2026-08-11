@@ -20,10 +20,10 @@ class Staff(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(120), nullable=False)
 
-    # ForeignKey ties this column to branches.id. PostgreSQL will refuse to
-    # store a branch_id that does not match a real branch, which is the kind
-    # of guarantee the in-memory list could never give us.
-    branch_id = Column(Integer, ForeignKey("branches.branch_code"))
+    # ForeignKey ties this column to branches.branch_code. PostgreSQL will
+    # refuse to store a code that does not match a real branch, which is the
+    # kind of guarantee the in-memory list could never give us.
+    branch_code = Column(Integer, ForeignKey("branches.branch_code"))
 
     # The other side of Branch.staff below.
     branch = relationship("Branch", back_populates="staff")

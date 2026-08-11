@@ -60,7 +60,11 @@ class Account(Base):
         server_default=Sequence("account_number_seq", start=1000).next_value(),
     )
 
-    branch_id = Column(Integer, ForeignKey("branches.branch_code"))
+    # The branch this account was opened at.
+    #
+    # Named branch_code, not branch_id, because it stores the branch's code
+    # rather than a surrogate id. Branches are keyed by their code.
+    branch_code = Column(Integer, ForeignKey("branches.branch_code"))
 
     # Links this account back to the Customer that owns it.
     #

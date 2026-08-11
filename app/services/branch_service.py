@@ -33,14 +33,14 @@ def list_branches(db: Session):
 
 # Finds a single branch by its id.
 # Returns None when there is no branch with that id.
-def get_branch(db: Session, branch_id: int):
-    return db.query(Branch).filter(Branch.branch_code == branch_id).first()
+def get_branch(db: Session, branch_code: int):
+    return db.query(Branch).filter(Branch.branch_code == branch_code).first()
 
 
 # Hires a staff member into a branch.
 # Returns the new Staff row, or None if the branch does not exist.
-def add_staff_member(db: Session, branch_id: int, name: str):
-    branch = get_branch(db, branch_id)
+def add_staff_member(db: Session, branch_code: int, name: str):
+    branch = get_branch(db, branch_code)
 
     if branch is None:
         return None

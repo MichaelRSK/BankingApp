@@ -21,9 +21,13 @@ class Customer(Base):
     name = Column(String(120), nullable=False)
     email = Column(String(255), nullable=False)
 
-    # This was a str in Module 1 while Account.branch_id was an int. They
-    # both point at the same branches table, so both are integers now.
-    branch_id = Column(Integer, ForeignKey("branches.branch_code"))
+    # The branch this customer belongs to.
+    #
+    # Named branch_code, not branch_id, because it stores the branch's code
+    # rather than a surrogate id. In Module 1 this was a str while
+    # Account.branch_id was an int, so the two never lined up. Both are
+    # integers pointing at branches.branch_code now.
+    branch_code = Column(Integer, ForeignKey("branches.branch_code"))
 
     # Customers are active when they are first created. We deactivate
     # instead of deleting so the customer's history is never lost.
@@ -44,11 +48,11 @@ class Customer(Base):
     # because a column default is only applied when the row is written. Doing
     # it here means a brand new Customer object reads as active straight
     # away, exactly as it did in Module 1.
-    def __init__(self, name: str, email: str, branch_id: int = None, **kwargs):
+    def __init__(self, name: str, email: str, branch_code: int = None, **kwargs):
         super().__init__(
             name=name,
             email=email,
-            branch_id=branch_id,
+            branch_code=branch_code,
             is_active=True,
             **kwargs,
         )
