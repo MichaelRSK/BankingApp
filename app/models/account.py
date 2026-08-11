@@ -60,7 +60,7 @@ class Account(Base):
         server_default=Sequence("account_number_seq", start=1000).next_value(),
     )
 
-    branch_id = Column(Integer, ForeignKey("branches.id"))
+    branch_id = Column(Integer, ForeignKey("branches.branch_code"))
 
     # Links this account back to the Customer that owns it.
     #

@@ -34,7 +34,7 @@ def list_branches(db: Session):
 # Finds a single branch by its id.
 # Returns None when there is no branch with that id.
 def get_branch(db: Session, branch_id: int):
-    return db.query(Branch).filter(Branch.id == branch_id).first()
+    return db.query(Branch).filter(Branch.branch_code == branch_id).first()
 
 
 # Hires a staff member into a branch.

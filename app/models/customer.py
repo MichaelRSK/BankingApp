@@ -23,7 +23,7 @@ class Customer(Base):
 
     # This was a str in Module 1 while Account.branch_id was an int. They
     # both point at the same branches table, so both are integers now.
-    branch_id = Column(Integer, ForeignKey("branches.id"))
+    branch_id = Column(Integer, ForeignKey("branches.branch_code"))
 
     # Customers are active when they are first created. We deactivate
     # instead of deleting so the customer's history is never lost.
