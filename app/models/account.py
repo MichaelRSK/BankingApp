@@ -24,7 +24,7 @@ from app.db.base import Base
 class Account(Base):
     __tablename__ = "accounts"
 
-    id = Column(Integer, primary_key=True)
+    # id = Column(Integer, primary_key=True)
     owner = Column(String(120), nullable=False)
 
     # ENCAPSULATION: the column is called "balance" in PostgreSQL, but in
@@ -58,6 +58,7 @@ class Account(Base):
         unique=True,
         nullable=False,
         server_default=Sequence("account_number_seq", start=1000).next_value(),
+        primary_key=True
     )
 
     # The branch this account was opened at.
