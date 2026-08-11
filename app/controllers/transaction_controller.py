@@ -1,10 +1,13 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.models.account import SavingsAccount, CheckingAccount
-
 # Import the service functions that contain the actual logic.
 from app.services.transaction_service import record_transfer, filter_transactions
+
+# Accounts now come out of MongoDB instead of the hardcoded dictionary that
+# used to sit in this file, so we go through the account service to read
+# them and to move the money.
+from app.services.account_service import get_account, adjust_balance
 
 
 # Router for transaction-related API endpoints
@@ -19,15 +22,6 @@ class TransferRequest(BaseModel):
     from_account_id: int
     to_account_id: int
     amount: float
-
-
-# Hardcoded accounts that I'm using for now until we implement a database
-accounts = {
-    1: SavingsAccount("Alice", 500.00),
-    2: CheckingAccount("Bob", 300.00),
-    3: SavingsAccount("Charlie", 1000.00),
-    4: CheckingAccount("Diana", 750.00),
-}
 
 
 # Transfers money from one account to another
@@ -48,9 +42,11 @@ def transfer_money(transfer: TransferRequest):
             detail="Cannot transfer to the same account"
         )
 
-    # Get the accounts using the IDs provided in the request
-    source_account = accounts.get(transfer.from_account_id)
-    destination_account = accounts.get(transfer.to_account_id)
+    # Look the accounts up in the database using the IDs from the request.
+    # These come back as plain dictionaries, so a balance is read with
+    # source_account["balance"] rather than the old get_balance() call.
+    source_account = get_account(transfer.from_account_id)
+    destination_account = get_account(transfer.to_account_id)
 
     # Make sure both accounts exist before attempting the transfer
     if source_account is None:
@@ -66,15 +62,17 @@ def transfer_money(transfer: TransferRequest):
         )
 
     # Make sure the source account has enough money
-    if source_account.get_balance() < transfer.amount:
+    if source_account["balance"] < transfer.amount:
         raise HTTPException(
             status_code=400,
             detail="Insufficient funds"
         )
 
-    # Remove the money from the source account and add it to the destination
-    source_account.withdraw(transfer.amount)
-    destination_account.deposit(transfer.amount)
+    # Remove the money from the source account and add it to the destination.
+    # A negative amount is a withdrawal, a positive one is a deposit. Each
+    # call writes straight to MongoDB and hands back the updated account.
+    updated_source = adjust_balance(transfer.from_account_id, -transfer.amount)
+    updated_destination = adjust_balance(transfer.to_account_id, transfer.amount)
 
     # Record the completed transfer so it shows up in the history endpoint
     record_transfer(transfer.from_account_id, transfer.to_account_id, transfer.amount)
@@ -85,8 +83,8 @@ def transfer_money(transfer: TransferRequest):
         "from_account_id": transfer.from_account_id,
         "to_account_id": transfer.to_account_id,
         "amount": transfer.amount,
-        "source_balance": source_account.get_balance(),
-        "destination_balance": destination_account.get_balance()
+        "source_balance": updated_source["balance"],
+        "destination_balance": updated_destination["balance"]
     }
 
 
