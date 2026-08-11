@@ -15,8 +15,6 @@ import datetime
 import os
 
 
-salt = os.getenv("SALT")
-
 secret_key = os.getenv("SECRET_KEY")
 algorithm = os.getenv("ALGORITHM")
 expire_time = os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")
@@ -44,16 +42,13 @@ def try_login(
     password: str
 ):
 
-    encrypted_pass = bcrypt.hashpw(password.encode(), salt)
-
     user =  (
         db.query(User)
         .filter(User.username == username)
-        .filter(User.password == encrypted_pass)
         .one()
     )
 
-    if len(user) == 0:
+    if not bcrypt.checkpw(password.encode(), user["password"]):
         pass
 
 
