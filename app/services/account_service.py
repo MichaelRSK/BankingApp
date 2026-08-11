@@ -16,14 +16,14 @@ next_account_id = 1
 # branch_id is the branch this account belongs to. It defaults to None so
 # accounts can still be opened without one, but an account needs a branch
 # before it can show up in filter_accounts() below.
-def create_account(owner: str, account_type: str, balance: float = 0, branch_id: int = None):
+def create_account(owner: str, owner_id: int, account_type: str, balance: float = 0, branch_id: int = None):
     global next_account_id  # needed since we are reassigning it below
 
     # Pick which class to instantiate based on the requested account_type.
     if account_type.lower() == "savings":
-        new_account = SavingsAccount(owner, balance)
+        new_account = SavingsAccount(owner, owner_id, balance)
     elif account_type.lower() == "checking":
-        new_account = CheckingAccount(owner, balance)
+        new_account = CheckingAccount(owner, owner_id, balance)
     else:
         # Return None so the controller knows the request was invalid.
         return None
@@ -32,6 +32,8 @@ def create_account(owner: str, account_type: str, balance: float = 0, branch_id:
     account_record = {
         "id": next_account_id,
         "owner": new_account.owner,
+        "owner_id": new_account.owner_id,
+        "account_number": new_account.account_number,
         "balance": new_account.get_balance(),
         "account_type": new_account.account_type(),
         "branch_id": branch_id,
