@@ -38,7 +38,6 @@ class AccountCreateRequest(BaseModel):
 # has always worked.
 def account_to_response(account):
     return {
-        "id": account.id,
         "account_number": account.account_number,
         "owner": account.owner,
         "owner_id": account.owner_id,

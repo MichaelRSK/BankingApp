@@ -29,8 +29,8 @@ class Transaction(Base):
     # Both are optional: a deposit has no source and a withdrawal has no
     # destination. The foreign keys mean a transaction can only ever name
     # accounts that actually exist.
-    from_account_id = Column(Integer, ForeignKey("accounts.id"), nullable=True)
-    to_account_id = Column(Integer, ForeignKey("accounts.id"), nullable=True)
+    from_account_id = Column(Integer, ForeignKey("accounts.account_number"), nullable=True)
+    to_account_id = Column(Integer, ForeignKey("accounts.account_number"), nullable=True)
 
     # Record when this happened. default=datetime.now means the caller does
     # not have to remember to set it, matching the Module 1 behaviour.
