@@ -24,3 +24,7 @@ alembic>=1.19.1
 # Reads the DATABASE_URL out of the .env file so credentials stay out of
 # the source code.
 python-dotenv>=1.2.2
+
+# Signs and verifies the JWT access tokens issued at login. This is the
+# library FastAPI's own security documentation uses.
+PyJWT>=2.10.1
