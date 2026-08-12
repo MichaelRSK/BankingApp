@@ -53,7 +53,7 @@ def attempt_login(
     # roles is a single string column, and create_access_token expects a list,
     # so it is wrapped here. If roles ever becomes a real many-to-many, this
     # is the only line that has to change.
-    return create_access_token(
+    return "Bearer " + create_access_token(
         subject=user.sub,
         email=user.email,
         roles=[user.roles],
