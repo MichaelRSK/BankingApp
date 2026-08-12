@@ -21,7 +21,7 @@ expire_time = os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")
 
 
 def create_token(
-    user: Query
+    user: User
 ):
     data = {
         "email": user["email"], 
@@ -57,3 +57,19 @@ def attempt_login(
     return {
         "Authorization": "Bearer "+create_token(user)
     }
+
+
+def register_user(db, username, password, roles, email, sub):
+
+    salt = bcrypt.gensalt()
+    encrypted_pass = bcrypt.hashpw(password.encode(), salt)
+    
+    new_user = User(username, encrypted_pass, roles, email, sub)
+
+    db.add(new_user)
+    db.commit()
+
+    # Pick up the id PostgreSQL generated during the commit.
+    db.refresh(new_user)
+
+    return new_user
