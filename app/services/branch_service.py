@@ -1,8 +1,18 @@
 from sqlalchemy.orm import Session
 
+# func gives access to SQL aggregate functions like count() and sum(),
+# used in get_branch_metrics to total up a branch's accounts and balances.
+from sqlalchemy import func
+
+
 # Import the Branch and Staff classes from their location in app/models.
 from app.models.branch import Branch, Staff
 
+
+# Needed to count and sum up a branch's accounts and customers for the
+# metrics function below.
+from app.models.account import Account
+from app.models.customer import Customer
 
 # This file was empty until now. Branches only existed as a plain class that
 # nothing ever stored, even though accounts and customers both referred to a
@@ -55,3 +65,44 @@ def add_staff_member(db: Session, branch_code: int, name: str):
     db.refresh(new_staff)
 
     return new_staff
+
+
+# Gathers the numbers a branch manager needs to see: how many customers and
+# accounts the branch has, how much money it holds in total, and how the
+# branch is staffed. Returns None if the branch doesn't exist.
+def get_branch_metrics(db: Session, branch_code: int):
+    branch = get_branch(db, branch_code)
+
+    if branch is None:
+        return None
+
+    customer_count = (
+        db.query(func.count(Customer._customer_id))
+        .filter(Customer.branch_code == branch_code)
+        .scalar()
+    )
+
+    account_count = (
+        db.query(func.count(Account.account_number))
+        .filter(Account.branch_code == branch_code)
+        .scalar()
+    )
+
+    total_balance = (
+        db.query(func.sum(Account._balance))
+        .filter(Account.branch_code == branch_code)
+        .scalar()
+    )
+
+    return {
+        "branch_code": branch.branch_code,
+        "location": branch.location,
+        "manager_id": branch.manager_id,
+        "customer_count": customer_count,
+        "account_count": account_count,
+        # func.sum returns None instead of 0 when there are no matching
+        # rows, so this catches that case rather than returning "null".
+        "total_balance": float(total_balance) if total_balance is not None else 0.0,
+        "staff_count": len(branch.staff),
+        "staff_to_manager_ratio": branch.staff_to_manager_ratio(),
+    }
