@@ -12,6 +12,11 @@ from app.services.transaction_service import record_transfer, filter_transaction
 # on each other.
 from app.services.account_service import get_account_for_update
 
+# get_current_user verifies the JWT and identifies who's calling.
+# require_role builds on it to restrict a route to specific roles.
+# CurrentUser is the object both return, holding user_id, email, and roles.
+from app.core.dependencies import get_current_user, require_role, CurrentUser
+
 
 # Router for transaction-related API endpoints
 router = APIRouter(
@@ -28,8 +33,12 @@ class TransferRequest(BaseModel):
 
 
 # Transfers money from one account to another
+# CUSTOMER can transfer their own money, TELLER/BRANCH_MANAGER/ADMIN can
+# move money on behalf of customers, so all four roles reach the route,
+# the ownership check below is what stops a CUSTOMER from using someone
+# else's account.
 @router.post("/transfer")
-def transfer_money(transfer: TransferRequest, db: Session = Depends(get_db)):
+def transfer_money(transfer: TransferRequest, db: Session = Depends(get_db), current_user: CurrentUser = Depends(require_role("CUSTOMER", "TELLER", "BRANCH_MANAGER", "ADMIN"))):
 
     # A transfer cannot be zero or negative
     if transfer.amount <= 0:
@@ -69,6 +78,16 @@ def transfer_money(transfer: TransferRequest, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=404,
             detail="Destination account not found"
+        )
+
+
+    # A CUSTOMER can only move money out of an account they actually own.
+    # TELLER/BRANCH_MANAGER/ADMIN skip this, they're allowed to act on
+    # behalf of any customer.
+    if current_user.has_role("CUSTOMER") and source_account.owner_id != current_user.user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Cannot transfer from an account you don't own"
         )
 
     # Make sure the source account has enough money
@@ -116,14 +135,23 @@ def transaction_to_response(transaction):
     }
 
 
+
 # GET /api/v1/transactions?start_date=2026-01-01&type=TRANSFER
 # Returns the transactions of that type that happened on or after start_date.
 # start_date and type are query parameters, FastAPI reads them from the URL
 # because they are not part of the path and not a request body.
+
+# A CUSTOMER only sees transactions that touched an account they own, staff
+# roles see every transaction.
 @router.get("")
-def get_filtered_transactions(start_date: str, type: str, db: Session = Depends(get_db)):
+def get_filtered_transactions(start_date: str, type: str, db: Session = Depends(get_db), current_user: CurrentUser = Depends(get_current_user)):
+    
+    # Only pass an owner_id through when the caller is a CUSTOMER, staff
+    # roles get None here, which skips the ownership filter entirely.
+    owner_id = current_user.user_id if current_user.has_role("CUSTOMER") else None
+    
     # Call the service layer to do the actual filtering.
-    matching_transactions = filter_transactions(db, start_date, type)
+    matching_transactions = filter_transactions(db, start_date, type, owner_id)
 
     # The service returns None when start_date was not a real date.
     if matching_transactions is None:
