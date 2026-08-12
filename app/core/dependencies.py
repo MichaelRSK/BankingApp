@@ -81,3 +81,24 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_
         # this without checking it first.
         roles=payload.get("roles", []),
     )
+
+
+
+# Returns a dependency that only lets the listed roles reach the route.
+#
+# CUSTOMER, TELLER, BRANCH_MANAGER, and ADMIN are the roles named in the
+# module README. A route stacks this on top of get_current_user, so a
+# request is rejected in two stages: 401 if it isn't authenticated at all,
+# 403 if it's authenticated but not allowed here.
+#
+# Usage: current_user: CurrentUser = Depends(require_role("ADMIN", "TELLER"))
+def require_role(*allowed_roles: str):
+    def role_checker(current_user: CurrentUser = Depends(get_current_user)):
+        if not any(current_user.has_role(role) for role in allowed_roles):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Requires one of these roles: {', '.join(allowed_roles)}",
+            )
+        return current_user
+
+    return role_checker
