@@ -1,3 +1,11 @@
+// Lets Logout redirect back to /login programmatically after clearing
+// the session, instead of relying on a link.
+import { useNavigate } from 'react-router-dom';
+
+// Gives access to login state (isAuthenticated) and the logout function
+// from wherever they're needed, no need to pass them down as props.
+import { useAuth } from '../context/AuthContext.jsx';
+
 import { useState } from 'react';
 import { Link as RouterLink, NavLink } from 'react-router-dom';
 import {
@@ -58,6 +66,20 @@ function NavBar() {
 
   const toggleDrawer = () => setMobileOpen((prev) => !prev);
 
+  // Reads login state so the nav bar can hide links and show Logout only
+  // when someone's actually signed in. Without this, the links and
+  // protected pages were reachable from the nav bar even while logged
+  // out, since nothing in the UI ever called logout() before.
+  const { isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+
+  // Clears the session, then sends the user back to the login page.
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  }
+
+
   // Contents of the mobile drawer. Clicking any link closes the drawer.
   const drawer = (
     <Box onClick={toggleDrawer} sx={{ textAlign: 'center', height: '100%' }}>
@@ -66,21 +88,29 @@ function NavBar() {
       </Typography>
       <Divider sx={{ borderColor: GREEN }} />
       <List>
-        {NAV_LINKS.map((link) => (
-          <ListItem key={link.path} disablePadding>
-            <ListItemButton
-              component={NavLink}
-              to={link.path}
-              sx={{
-                textAlign: 'center',
-                color: CREAM,
-                '&.active': { color: GREEN, bgcolor: 'rgba(47, 158, 99, 0.16)' },
-              }}
-            >
-              <ListItemText primary={link.label} />
-            </ListItemButton>
-          </ListItem>
-        ))}
+      {isAuthenticated && NAV_LINKS.map((link) => (
+  <ListItem key={link.path} disablePadding>
+    <ListItemButton
+      component={NavLink}
+      to={link.path}
+      sx={{
+        textAlign: 'center',
+        color: CREAM,
+        '&.active': { color: GREEN, bgcolor: 'rgba(47, 158, 99, 0.16)' },
+      }}
+    >
+      <ListItemText primary={link.label} />
+    </ListItemButton>
+  </ListItem>
+))}
+
+{isAuthenticated && (
+  <ListItem disablePadding>
+    <ListItemButton onClick={handleLogout} sx={{ textAlign: 'center', color: CREAM }}>
+      <ListItemText primary="Logout" />
+    </ListItemButton>
+  </ListItem>
+)}  
       </List>
     </Box>
   );
@@ -120,27 +150,36 @@ function NavBar() {
             {APP_NAME}
           </Typography>
 
-          {/* Full nav links on the right: visible from md and up */}
-          <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1 }}>
-            {NAV_LINKS.map((link) => (
-              <Button
-                key={link.path}
-                component={NavLink}
-                to={link.path}
-                sx={{
-                  color: CREAM,
-                  '&:hover': { bgcolor: 'rgba(47, 158, 99, 0.16)' },
-                  '&.active': {
-                    color: GREEN,
-                    borderBottom: `2px solid ${GREEN}`,
-                    borderRadius: 0,
-                  },
-                }}
-              >
-                {link.label}
+          {/* Full nav links on the right: visible from md and up, and
+              only shown once someone's actually signed in. Logout sits
+              alongside them so there's finally a way to end a session
+              and test what a logged-out visitor can and can't reach. */}
+          {isAuthenticated && (
+            <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1 }}>
+              {NAV_LINKS.map((link) => (
+                <Button
+                  key={link.path}
+                  component={NavLink}
+                  to={link.path}
+                  sx={{
+                    color: CREAM,
+                    '&:hover': { bgcolor: 'rgba(47, 158, 99, 0.16)' },
+                    '&.active': {
+                      color: GREEN,
+                      borderBottom: `2px solid ${GREEN}`,
+                      borderRadius: 0,
+                    },
+                  }}
+                >
+                  {link.label}
+                </Button>
+              ))}
+
+              <Button onClick={handleLogout} sx={{ color: CREAM }}>
+                Logout
               </Button>
-            ))}
-          </Box>
+            </Box>
+          )}
         </Toolbar>
       </AppBar>
 
