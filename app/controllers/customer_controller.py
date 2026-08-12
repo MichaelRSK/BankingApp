@@ -17,6 +17,13 @@ from app.services.customer_service import (
     deactivate_customer,
 )
 
+
+# get_current_user verifies the JWT and identifies who's calling.
+# require_role builds on it to restrict a route to specific roles.
+# CurrentUser is the object both return, holding user_id, email, and roles.
+from app.core.dependencies import get_current_user, require_role, CurrentUser
+
+
 # Create a router for customer related endpoints.
 router = APIRouter()
 
@@ -50,10 +57,14 @@ def customer_to_response(customer):
     }
 
 
+
 # POST /api/v1/customers
 # Creates a new customer using the data sent in the request body.
+
+# Opening a customer record is staff work, done at the branch, so only
+# TELLER, BRANCH_MANAGER, or ADMIN can call this.
 @router.post("/api/v1/customers", status_code=201)
-def add_customer(request: CustomerCreateRequest, db: Session = Depends(get_db)):
+def add_customer(request: CustomerCreateRequest, db: Session = Depends(get_db), current_user: CurrentUser = Depends(require_role("TELLER", "BRANCH_MANAGER", "ADMIN"))):
     # Both name and email are required to create a customer.
     if not request.name or not request.email:
         raise HTTPException(status_code=400, detail="name and email are required")
@@ -64,20 +75,32 @@ def add_customer(request: CustomerCreateRequest, db: Session = Depends(get_db)):
     return customer_to_response(new_customer)
 
 
+
 # GET /api/v1/customers
 # Returns every customer we currently have stored.
+
+# Listing every customer in the bank is staff-only, a CUSTOMER has no
+# business seeing anyone else's record here.
 @router.get("/api/v1/customers")
-def get_all_customers(db: Session = Depends(get_db)):
+def get_all_customers(db: Session = Depends(get_db), current_user: CurrentUser = Depends(require_role("TELLER", "BRANCH_MANAGER", "ADMIN"))):
     customers = list_customers(db)
 
     # Shape each customer for the response.
     return [customer_to_response(customer) for customer in customers]
 
 
+
 # GET /api/v1/customers/{customer_id}
 # Returns a single customer by id.
+
+# Any authenticated user can call this, but a CUSTOMER can only look up
+# their own record, staff can look up anyone's.
 @router.get("/api/v1/customers/{customer_id}")
-def get_customer_by_id(customer_id: int, db: Session = Depends(get_db)):
+def get_customer_by_id(customer_id: int, db: Session = Depends(get_db), current_user: CurrentUser = Depends(get_current_user)):
+
+    if current_user.has_role("CUSTOMER") and current_user.user_id != customer_id:
+        raise HTTPException(status_code=403, detail="Cannot view another customer's record")
+
     customer = get_customer(db, customer_id)
 
     # If the service returned None, no customer has that id.
@@ -89,8 +112,13 @@ def get_customer_by_id(customer_id: int, db: Session = Depends(get_db)):
 
 # PUT /api/v1/customers/{customer_id}
 # Updates the name and/or email of an existing customer.
+# A CUSTOMER can update their own name/email, staff can update anyone's.
 @router.put("/api/v1/customers/{customer_id}")
-def edit_customer(customer_id: int, request: CustomerUpdateRequest, db: Session = Depends(get_db)):
+def edit_customer(customer_id: int, request: CustomerUpdateRequest, db: Session = Depends(get_db), current_user: CurrentUser = Depends(get_current_user)):
+
+    if current_user.has_role("CUSTOMER") and current_user.user_id != customer_id:
+        raise HTTPException(status_code=403, detail="Cannot edit another customer's record")
+
     updated_customer = update_customer(db, customer_id, request.name, request.email)
 
     # If the service returned None, no customer has that id.
@@ -100,10 +128,14 @@ def edit_customer(customer_id: int, request: CustomerUpdateRequest, db: Session 
     return customer_to_response(updated_customer)
 
 
+
 # DELETE /api/v1/customers/{customer_id}
 # Deactivates the customer instead of removing them from storage.
+
+# Closing an account is staff work, a CUSTOMER cannot deactivate themself
+# or anyone else through this route.
 @router.delete("/api/v1/customers/{customer_id}")
-def remove_customer(customer_id: int, db: Session = Depends(get_db)):
+def remove_customer(customer_id: int, db: Session = Depends(get_db), current_user: CurrentUser = Depends(require_role("BRANCH_MANAGER", "ADMIN"))):
     was_deactivated = deactivate_customer(db, customer_id)
 
     # If the service returned False, no customer has that id.
