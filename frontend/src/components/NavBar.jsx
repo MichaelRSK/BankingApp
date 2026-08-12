@@ -11,19 +11,47 @@ import {
   ListItem,
   ListItemButton,
   ListItemText,
+  SvgIcon,
   Toolbar,
   Typography,
 } from '@mui/material';
-import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import MenuIcon from '@mui/icons-material/Menu';
 
-const APP_NAME = 'BankingApp';
+const APP_NAME = 'QMMO Bank';
+
+// Palette lifted from the shield favicon: navy plate, green shield, cream detail.
+const NAVY = '#122A47';
+const GREEN = '#2F9E63';
+const CREAM = '#F3EAE0';
 
 const NAV_LINKS = [
   { label: 'Dashboard', path: '/dashboard' },
   { label: 'Analytics', path: '/analytics' },
   { label: 'Accounts', path: '/accounts' },
 ];
+
+// The shield mark from public/favicon.svg. The navy backing plate is dropped
+// since the mark already sits on the navy app bar.
+function ShieldIcon(props) {
+  return (
+    <SvgIcon viewBox="14 10 36 43.5" {...props}>
+      <path
+        d="M32 12 48 17.5V33c0 9.5-6.8 15.6-16 18.5C22.8 48.6 16 42.5 16 33V17.5Z"
+        fill={GREEN}
+      />
+      <g
+        fill="none"
+        stroke={CREAM}
+        strokeWidth="3.1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M32 18.6v25.8" />
+        <path d="M37.3 26.3c0-3.5-2.4-5.3-5.3-5.3s-5.3 1.8-5.3 4.6c0 2.8 2.5 4 5.3 4.8s5.6 2.1 5.6 5.2c0 3-2.5 5-5.6 5s-5.6-1.8-5.6-5" />
+      </g>
+    </SvgIcon>
+  );
+}
 
 function NavBar() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -32,11 +60,11 @@ function NavBar() {
 
   // Contents of the mobile drawer. Clicking any link closes the drawer.
   const drawer = (
-    <Box onClick={toggleDrawer} sx={{ textAlign: 'center' }}>
-      <Typography variant="h6" sx={{ my: 2 }}>
+    <Box onClick={toggleDrawer} sx={{ textAlign: 'center', height: '100%' }}>
+      <Typography variant="h6" sx={{ my: 2, fontWeight: 600 }}>
         {APP_NAME}
       </Typography>
-      <Divider />
+      <Divider sx={{ borderColor: GREEN }} />
       <List>
         {NAV_LINKS.map((link) => (
           <ListItem key={link.path} disablePadding>
@@ -45,7 +73,8 @@ function NavBar() {
               to={link.path}
               sx={{
                 textAlign: 'center',
-                '&.active': { bgcolor: 'action.selected' },
+                color: CREAM,
+                '&.active': { color: GREEN, bgcolor: 'rgba(47, 158, 99, 0.16)' },
               }}
             >
               <ListItemText primary={link.label} />
@@ -58,7 +87,11 @@ function NavBar() {
 
   return (
     <>
-      <AppBar component="nav" position="static">
+      <AppBar
+        component="nav"
+        position="static"
+        sx={{ bgcolor: NAVY, color: CREAM, borderBottom: `3px solid ${GREEN}` }}
+      >
         <Toolbar>
           {/* Hamburger: visible only below the md breakpoint */}
           <IconButton
@@ -72,7 +105,7 @@ function NavBar() {
           </IconButton>
 
           {/* Logo / app name on the left, links back to the dashboard */}
-          <AccountBalanceIcon sx={{ mr: 1, display: { xs: 'none', sm: 'flex' } }} />
+          <ShieldIcon sx={{ mr: 1, display: { xs: 'none', sm: 'flex' } }} />
           <Typography
             variant="h6"
             component={RouterLink}
@@ -95,9 +128,11 @@ function NavBar() {
                 component={NavLink}
                 to={link.path}
                 sx={{
-                  color: 'inherit',
+                  color: CREAM,
+                  '&:hover': { bgcolor: 'rgba(47, 158, 99, 0.16)' },
                   '&.active': {
-                    borderBottom: '2px solid',
+                    color: GREEN,
+                    borderBottom: `2px solid ${GREEN}`,
                     borderRadius: 0,
                   },
                 }}
@@ -116,7 +151,12 @@ function NavBar() {
         ModalProps={{ keepMounted: true }} // better open performance on mobile
         sx={{
           display: { xs: 'block', md: 'none' },
-          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 240 },
+          '& .MuiDrawer-paper': {
+            boxSizing: 'border-box',
+            width: 240,
+            bgcolor: NAVY,
+            color: CREAM,
+          },
         }}
       >
         {drawer}
