@@ -6,19 +6,28 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check if a user session exists on app mount
+  // Check if a session exists on app mount.
+  //
+  // No JSON.parse here. The stored value is the raw JWT string, not an
+  // object, and parsing it would throw on anything that is not valid JSON,
+  // which would leave loading stuck at true and render an empty app.
   useEffect(() => {
-    const storedUser = localStorage.getItem('access_token');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    const storedToken = localStorage.getItem('access_token');
+    if (storedToken) {
+      setUser(storedToken);
     }
     setLoading(false);
   }, []);
 
-  // Login handler
-  const login = (userData) => {
-    setUser(userData);
-    localStorage.setItem('access_token', JSON.stringify(userData));
+  // Login handler. Takes the raw JWT string from the login response.
+  //
+  // Stored verbatim, without JSON.stringify. Stringifying wraps the token in
+  // literal double quotes, and api.js reads this value straight into the
+  // Authorization header, so the server would receive Bearer "eyJ..." and
+  // reject every authenticated request.
+  const login = (accessToken) => {
+    setUser(accessToken);
+    localStorage.setItem('access_token', accessToken);
   };
 
   // Logout handler

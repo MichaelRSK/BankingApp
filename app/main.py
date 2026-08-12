@@ -22,13 +22,14 @@ from fastapi.middleware.cors import CORSMiddleware
 # Create the FastAPI application.
 app = FastAPI()
 
+# An origin is scheme + host + port and nothing else. A trailing /* is not a
+# wildcard here, it just makes an entry that can never match, and an entry
+# without a scheme cannot match either. Both spellings of localhost are listed
+# because the browser treats them as different origins, so which one works
+# depends on what is in the address bar.
 origins = [
     "http://localhost:5173",
-    "http://localhost:5173/*",
-    "http://localhost:5173",
-    "http://localhost:5173/*",
-    "127.0.0.1:5173/*",
-    "127.0.0.1:5173",
+    "http://127.0.0.1:5173",
 ]
 
 app.add_middleware(

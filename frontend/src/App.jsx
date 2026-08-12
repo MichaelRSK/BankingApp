@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Box, CssBaseline } from '@mui/material';
 import NavBar from './components/NavBar';
+import ProtectedRoute from './components/ProtectedRoute';
 import Dashboard from './pages/Dashboard';
 import AnalyticsView from './pages/AnalyticsView';
 import AccountView from './pages/AccountView';
@@ -15,9 +16,30 @@ function App() {
         <Routes>
           {/* Land on the dashboard by default */}
           <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/analytics" element={<AnalyticsView />} />
-          <Route path="/accounts" element={<AccountView />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/analytics"
+            element={
+              <ProtectedRoute>
+                <AnalyticsView />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/accounts"
+            element={
+              <ProtectedRoute>
+                <AccountView />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/login" element={<LoginView />} />
           {/* Unknown paths fall back to the login */}
           <Route path="*" element={<Navigate to="/login" replace />} />

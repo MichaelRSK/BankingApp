@@ -13,7 +13,7 @@ import {
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import axios from "axios";
+import api from "../api/api";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useNavigate } from 'react-router-dom';
 
@@ -44,16 +44,27 @@ export default function LoginView() {
     }
 
     setSubmitting(true);
-    // Mock auth call — replace with your real request.
 
-    const response = await axios.post('http://127.0.0.1:8000/api/v1/login', {
-      username: username,
-      password: password
-    });
+    try {
+      const response = await api.post('/api/v1/login', {
+        username: username,
+        password: password
+      });
 
-    if(response.data.access_token) {
       login(response.data.access_token);
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
+    } catch (err) {
+      if (err.response?.status === 401) {
+        setError("Invalid username or password.");
+      } else if (err.response) {
+        setError("Something went wrong signing you in. Please try again.");
+      } else {
+        setError("Could not reach the server. Is the backend running?");
+      }
+    } finally {
+      // Always runs, so a failed attempt cannot leave the button stuck
+      // on "Signing in...".
+      setSubmitting(false);
     }
   };
 
