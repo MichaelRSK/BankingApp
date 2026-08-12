@@ -4,20 +4,25 @@ from fastapi import APIRouter, HTTPException, Depends
 # BaseModel is used to define the shape of the incoming request body.
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from app.security.rbac import require_roles
 
 # get_db opens a session for this request and closes it afterwards.
 from app.db.session import get_db
 
 # Import the service functions that contain the actual logic.
-from app.services.account_service import create_account, filter_accounts, get_account
-
+from app.services.account_service import create_account, filter_accounts
 
 # Used to check that the customer and branch an account points at actually
 # exist, so we can answer with a clear 404 instead of letting the database
 # raise a foreign key error.
 from app.services.customer_service import get_customer
 from app.services.branch_service import get_branch
+
+
+# get_current_user verifies the JWT and identifies who's calling.
+# require_role builds on it to restrict a route to specific roles.
+# CurrentUser is the object both return, holding user_id, email, and roles.
+from app.core.dependencies import get_current_user, require_role, CurrentUser
+
 
 # Create a router for account related endpoints.
 router = APIRouter()
@@ -52,10 +57,16 @@ def account_to_response(account):
     }
 
 
+
 # POST /api/v1/accounts
 # Opens a new account using the data sent in the request body.
+
+# Only TELLER, BRANCH_MANAGER, or ADMIN can open accounts, this is staff
+# work done on a customer's behalf, not something a customer does themself.
 @router.post("/api/v1/accounts")
-def open_account(request: AccountCreateRequest, db: Session = Depends(get_db)):
+def open_account(request: AccountCreateRequest, db: Session = Depends(get_db), current_user: CurrentUser = Depends(require_role("TELLER", "BRANCH_MANAGER", "ADMIN"))):
+    
+     
     # owner_id and branch_code are foreign keys now, so PostgreSQL rejects the
     # insert outright if they name rows that do not exist. Checking here
     # turns what would surface as a 500 into a clear 404.
@@ -83,17 +94,17 @@ def open_account(request: AccountCreateRequest, db: Session = Depends(get_db)):
     return account_to_response(account)
 
 
+
 # GET /api/v1/accounts?branch_code=12345&min_balance=1000
 # Returns the accounts at a branch that hold at least min_balance.
 # branch_code and min_balance are query parameters, FastAPI reads them from
 # the URL because they are not part of the path and not a request body.
+
+# Any authenticated user can call this, but a CUSTOMER only ever sees their
+# own accounts, staff roles see everyone's.
 @router.get("/api/v1/accounts")
-def get_filtered_accounts(
-    branch_code: int,
-    min_balance: float,
-    db: Session = Depends(get_db),
-    current_user=Depends(require_roles("CUSTOMER"))
-):
+def get_filtered_accounts(branch_code: int, min_balance: float, db: Session = Depends(get_db), current_user: CurrentUser = Depends(get_current_user)):
+  
     # A balance cannot be negative, so neither can the minimum we filter on.
     if min_balance < 0:
         raise HTTPException(status_code=400, detail="min_balance cannot be negative")
@@ -101,13 +112,12 @@ def get_filtered_accounts(
     # Call the service layer to do the actual filtering.
     matching_accounts = filter_accounts(db, branch_code, min_balance)
 
-    current_customer_id = int(current_user["sub"])
 
-    matching_accounts = [
-    account
-    for account in matching_accounts
-    if account.owner_id == current_customer_id
-    ]
-    
+    # A CUSTOMER gets filtered down to only the accounts they own. Staff
+    # roles (TELLER, BRANCH_MANAGER, ADMIN) skip this and see everything.
+    if current_user.has_role("CUSTOMER"):
+        matching_accounts = [a for a in matching_accounts if a.owner_id == current_user.user_id]
+
+
     # An empty list is a valid answer here, it just means nothing matched.
     return [account_to_response(account) for account in matching_accounts]
