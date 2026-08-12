@@ -30,6 +30,22 @@ function AccountView() {
   const [error, setError] =
     useState("");
 
+  // Separate state for the transfer form below. Kept apart from the search
+  // state above (branchCode, minBalance, accounts) since search and
+  // transfer are two independent features sharing this one page.
+  const [fromAccount, setFromAccount] =
+    useState("");
+  const [toAccount, setToAccount] =
+    useState("");
+  const [transferAmount, setTransferAmount] =
+    useState("");
+  // Shown in a green Alert when a transfer succeeds.
+  const [transferMessage, setTransferMessage] =
+    useState("");
+  // Shown in a red Alert when a transfer fails, empty string means no error.
+  const [transferError, setTransferError] =
+    useState("");
+
   const loadAccounts = async () => {
     if (!branchCode) {
       setError(
@@ -75,6 +91,55 @@ function AccountView() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Sends the transfer to the backend and reports the result. Separate
+  // from loadAccounts above since it's a different action entirely,
+  // moving money rather than reading it.
+  const handleTransfer = async () => {
+    // Clear any previous result before trying again.
+    setTransferMessage("");
+    setTransferError("");
+
+    try {
+      const response = await api.post(
+        "/api/v1/transactions/transfer",
+        {
+          // Form inputs are strings by default, the backend expects
+          // numbers, so each one gets converted here before sending.
+          from_account_id: Number(fromAccount),
+          to_account_id: Number(toAccount),
+          amount: Number(transferAmount),
+        }
+      );
+
+      // The backend returns the updated source balance on success, shown
+      // directly so the user can see the transfer actually went through.
+      setTransferMessage(
+        `Transfer successful. New balance: $${response.data.source_balance}`
+      );
+      // Reset the form now that the transfer completed.
+      setFromAccount("");
+      setToAccount("");
+      setTransferAmount("");
+    } catch (err) {
+      console.error(err);
+
+      // 403 specifically means the backend's ownership check rejected the
+      // transfer, a CUSTOMER trying to move money out of an account that
+      // isn't theirs. Anything else falls back to whatever detail message
+      // the backend sent, or a generic message if there isn't one.
+      if (err.response?.status === 403) {
+        setTransferError(
+          "Cannot transfer from an account you don't own."
+        );
+      } else {
+        setTransferError(
+          err.response?.data?.detail ||
+            "Transfer failed."
+        );
+      }
     }
   };
 
@@ -389,6 +454,103 @@ function AccountView() {
           </CardContent>
         </Card>
       )}
+
+      {/* Transfer form. Always visible below the search results, whether
+          or not a search has actually been run, since it's a separate
+          feature from account lookup. */}
+      <Card
+        variant="outlined"
+        sx={{
+          mt: 4,
+        }}
+      >
+        <CardContent>
+          <Typography
+            variant="h6"
+            sx={{
+              mb: 2,
+            }}
+          >
+            Transfer Money
+          </Typography>
+
+          {/* Success and error messages are mutually exclusive in
+              practice, only one is ever set at a time by handleTransfer. */}
+          {transferMessage && (
+            <Alert
+              severity="success"
+              sx={{
+                mb: 2,
+              }}
+            >
+              {transferMessage}
+            </Alert>
+          )}
+
+          {transferError && (
+            <Alert
+              severity="error"
+              sx={{
+                mb: 2,
+              }}
+            >
+              {transferError}
+            </Alert>
+          )}
+
+          <Stack spacing={2}>
+            {/* Each field is a controlled input, tied directly to its own
+                piece of state, same pattern the search fields above use. */}
+            <TextField
+              label="From Account Number"
+              value={fromAccount}
+              onChange={(event) =>
+                setFromAccount(
+                  event.target.value
+                )
+              }
+              fullWidth
+            />
+
+            <TextField
+              label="To Account Number"
+              value={toAccount}
+              onChange={(event) =>
+                setToAccount(
+                  event.target.value
+                )
+              }
+              fullWidth
+            />
+
+            <TextField
+              label="Amount"
+              type="number"
+              value={transferAmount}
+              onChange={(event) =>
+                setTransferAmount(
+                  event.target.value
+                )
+              }
+              fullWidth
+            />
+
+            <Button
+              variant="contained"
+              onClick={handleTransfer}
+              sx={{
+                backgroundColor: "#21b66f",
+                color: "#ffffff",
+                "&:hover": {
+                  backgroundColor: "#18985b",
+                },
+              }}
+            >
+              TRANSFER
+            </Button>
+          </Stack>
+        </CardContent>
+      </Card>
     </Container>
   );
 }
