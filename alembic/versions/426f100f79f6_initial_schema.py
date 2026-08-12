@@ -75,7 +75,6 @@ def upgrade() -> None:
     sa.Column('username', sa.String(length=20), nullable=False),
     sa.Column('password', sa.String(length=20), nullable=False),
     sa.Column('email', sa.String(length=20), nullable=False),
-    sa.Column('email', sa.String(length=20), nullable=False),
     sa.Column('sub', sa.String(length=40), nullable=False),
     sa.Column('roles', sa.String(length=40), nullable=True),
     sa.PrimaryKeyConstraint('username')
@@ -91,4 +90,5 @@ def downgrade() -> None:
     op.drop_table('staff')
     op.drop_table('customers')
     op.drop_table('branches')
+    op.drop_table('users')
     # ### end Alembic commands ###
