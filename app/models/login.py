@@ -1,40 +1,35 @@
-# Decimal is Python's exact decimal type. Money is stored as Numeric in
-# PostgreSQL, which comes back as a Decimal, so the maths below uses it too.
-from decimal import Decimal
-
-from sqlalchemy import Column, Integer, String, Numeric, ForeignKey, Sequence
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, String
 
 from app.db.base import Base
 
 
-# Account is the base class every specific account type builds on.
+# User holds the login credentials and the claims that end up inside a token.
 #
-# ABSTRACTION: in Module 1 this inherited from ABC and marked account_type()
-# with @abstractmethod. That is not possible now, because ABC's metaclass and
-# SQLAlchemy's declarative metaclass cannot be combined on one class. The
-# intent is kept by raising NotImplementedError instead: a subclass that
-# forgets to implement account_type() still fails loudly, just when the
-# method is called rather than when the object is created.
+# The password column stores a bcrypt hash, never the password itself. bcrypt
+# keeps the salt inside the hash string, so there is no separate salt column
+# sitting next to it.
 #
-# INHERITANCE: SavingsAccount and CheckingAccount below share this one table.
-# SQLAlchemy calls that single table inheritance. The "type" column records
-# which class each row is, and SQLAlchemy uses it to rebuild the right
-# subclass when loading a row back out.
+# sub, email and roles are the three claims app/core/security.py copies into
+# every token it signs.
 class User(Base):
-    __tablename__ = "credentials"
+    __tablename__ = "users"
 
     # id = Column(Integer, primary_key=True)
+    # unique=True is left off deliberately. A primary key is already unique,
+    # and declaring both makes Alembic see a constraint in the models that is
+    # not in the database and offer to add it on every autogenerate.
     username = Column(
         String,
-        unique=True,
         nullable=False,
         primary_key=True
     )
 
+    # Not unique. Two users choosing the same password is not an error, and
+    # the constraint would have leaked that fact by rejecting the second one.
+    # In practice bcrypt's random salt makes two hashes differ anyway, so this
+    # never fired and simply described the wrong intent.
     password = Column(
         String,
-        unique=True,
         nullable=False,
         primary_key=False
     )
@@ -53,9 +48,11 @@ class User(Base):
         primary_key=False
     )
 
+    # Not unique. Every CUSTOMER shares the same role string, so a unique
+    # constraint here would let only one user in the whole system hold a
+    # given role.
     roles = Column(
         String,
-        unique=True,
         nullable=False,
         primary_key=False
     )
@@ -67,6 +64,6 @@ class User(Base):
             password=pwd,
             sub=sb,
             email=eml,
-            roles=rls
+            roles=rls,
             **kwargs,
         )

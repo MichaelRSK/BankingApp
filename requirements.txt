@@ -28,3 +28,12 @@ python-dotenv>=1.2.2
 # Signs and verifies the JWT access tokens issued at login. This is the
 # library FastAPI's own security documentation uses.
 PyJWT>=2.10.1
+
+# Hashes passwords before they are stored, and checks a typed password
+# against a stored hash at login. The salt lives inside the hash.
+bcrypt>=4.2.1
+
+# An alternative JWT implementation. Nothing imports it now that token
+# creation is centralised in app/core/security.py on PyJWT, so this can be
+# removed once the team agrees.
+python-jose[cryptography]>=3.3.0
