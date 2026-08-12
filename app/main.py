@@ -22,19 +22,18 @@ from fastapi.middleware.cors import CORSMiddleware
 # Create the FastAPI application.
 app = FastAPI()
 
-# An origin is scheme + host + port and nothing else. A trailing /* is not a
-# wildcard here, it just makes an entry that can never match, and an entry
-# without a scheme cannot match either. Both spellings of localhost are listed
-# because the browser treats them as different origins, so which one works
-# depends on what is in the address bar.
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
-
+# Allow the Vite dev server regardless of which port it landed on. Vite bumps
+# to 5174, 5175 and so on when its default port is taken, so a fixed list
+# silently breaks the moment that happens. The regex accepts either spelling
+# of localhost on any port, and nothing else, so it stays a dev-only allowance
+# rather than opening the API to the world.
+#
+# allow_origin_regex is matched against the whole Origin header, which is only
+# ever scheme + host + port, so there is no path for a trailing slash to creep
+# in. A production origin would be added to allow_origins explicitly.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
     allow_credentials=True,
     allow_methods=["*"],  # Allows POST, OPTIONS, GET, etc.
     allow_headers=["*"],  # Allows custom headers like Content-Type
