@@ -1,0 +1,7 @@
+/* MUI's CssBaseline (mounted in App.jsx) handles the global reset.
+   Keep app-wide overrides here. */
+html,
+body,
+#root {
+  height: 100%;
+}
