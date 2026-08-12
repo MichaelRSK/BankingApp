@@ -38,6 +38,35 @@ def record_transfer(db: Session, from_account_id: int, to_account_id: int, amoun
     return new_transaction
 
 
+# Records a deposit into a single account. Unlike a transfer, there is no
+# source account, so from_account_id stays empty and only to_account_id
+# is set.
+def record_deposit(db: Session, to_account_id: int, amount: float):
+    new_transaction = Transaction(
+        transaction_type="DEPOSIT",
+        amount=amount,
+        to_account_id=to_account_id,
+    )
+
+    db.add(new_transaction)
+
+    return new_transaction
+
+
+# Records a withdrawal from a single account. Unlike a transfer, there is no
+# destination account, so to_account_id stays empty and only
+# from_account_id is set.
+def record_withdrawal(db: Session, from_account_id: int, amount: float):
+    new_transaction = Transaction(
+        transaction_type="WITHDRAWAL",
+        amount=amount,
+        from_account_id=from_account_id,
+    )
+
+    db.add(new_transaction)
+
+    return new_transaction
+
 
 # Returns every transaction that happened on or after start_date AND matches
 # the given type. Both conditions have to be true for a transaction to be
