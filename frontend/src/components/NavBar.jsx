@@ -17,7 +17,7 @@ import {
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import MenuIcon from '@mui/icons-material/Menu';
 
-const APP_NAME = 'BankingApp';
+const APP_NAME = 'QMMO Bank';
 
 const NAV_LINKS = [
   { label: 'Dashboard', path: '/dashboard' },
