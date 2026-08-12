@@ -4,6 +4,7 @@ import NavBar from './components/NavBar';
 import Dashboard from './pages/Dashboard';
 import AnalyticsView from './pages/AnalyticsView';
 import AccountView from './pages/AccountView';
+import LoginView from './pages/LoginView';
 
 function App() {
   return (
@@ -13,12 +14,13 @@ function App() {
       <Box component="main">
         <Routes>
           {/* Land on the dashboard by default */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/analytics" element={<AnalyticsView />} />
           <Route path="/accounts" element={<AccountView />} />
-          {/* Unknown paths fall back to the dashboard */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/login" element={<LoginView />} />
+          {/* Unknown paths fall back to the login */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Box>
     </>

@@ -24,3 +24,8 @@ htmlcov/
 .idea/
 *.swp
 Thumbs.db
+
+# node packages
+node_modules/
+package-lock.json
+package.json
