@@ -8,13 +8,13 @@ from sqlalchemy.orm import Session
 # get_db opens a session for this request and closes it afterwards.
 from app.db.session import get_db
 
-# Import the service function that contains the actual logic.
-from app.services.login_service import attempt_login
+# Import the service functions that contain the actual logic.
+from app.services.login_service import attempt_login, register_user
 
 # Create a router for login related endpoints.
 #
-# The prefix is the whole path up to the route below, so this resolves to
-# POST /api/v1/login.
+# The prefix is the whole path up to the routes below, so they resolve to
+# POST /api/v1/login and POST /api/v1/registration.
 router = APIRouter(
     prefix="/api/v1",
     tags=["Login"],
@@ -29,6 +29,19 @@ router = APIRouter(
 class LoginRequest(BaseModel):
     username: str
     password: str
+
+
+# Defines what the request body must look like when registering.
+#
+# Separate from LoginRequest on purpose. Logging in needs two fields, and
+# putting all five on one model would make roles and sub look optional at
+# login and required here, when the opposite is true.
+class RegistrationRequest(BaseModel):
+    username: str
+    password: str
+    roles: str
+    sub: str
+    email: str
 
 
 # POST /api/v1/login
@@ -58,4 +71,36 @@ def try_login(credentials: LoginRequest, db: Session = Depends(get_db)):
     return {
         "access_token": token,
         "token_type": "bearer",
+    }
+
+
+# POST /api/v1/registration
+# Creates a new user. 201 because a new resource now exists.
+@router.post("/registration", status_code=201)
+def try_registration(info: RegistrationRequest, db: Session = Depends(get_db)):
+    new_user = register_user(
+        db,
+        username=info.username,
+        password=info.password,
+        roles=info.roles,
+        email=info.email,
+        sub=info.sub,
+    )
+
+    # The service returns None when the username, sub or email is already
+    # taken. 409 says the request was fine but conflicts with what is stored.
+    if new_user is None:
+        raise HTTPException(
+            status_code=409,
+            detail="username, sub or email is already registered",
+        )
+
+    # Shaped by hand rather than returning the User object. Returning the ORM
+    # object directly would put the password hash in the response body, which
+    # should never leave the database.
+    return {
+        "username": new_user.username,
+        "sub": new_user.sub,
+        "email": new_user.email,
+        "roles": new_user.roles,
     }
