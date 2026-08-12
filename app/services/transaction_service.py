@@ -97,13 +97,14 @@ def filter_transactions(db: Session, start_date: str, type: str, owner_id: int =
     # func.upper would work here too, but comparing against an upper-cased
     # Python string is enough: "transfer" and "TRANSFER" both match because
     # we store the type already upper-cased.
-    return (
+    #
+    # Built up rather than returned straight away, because the ownership
+    # filter below still has to be applied before the query runs.
+    query = (
         db.query(Transaction)
         .filter(Transaction.timestamp >= start_of_day)
         .filter(Transaction.transaction_type == type.upper())
-        .all()
     )
-
 
     # When an owner_id is given, first find every account number that owner
     # holds, then keep only transactions where that account was either the

@@ -28,6 +28,11 @@ from app.core.dependencies import get_current_user, require_role, CurrentUser
 # account move, the same way record_transfer does for a two-account move.
 from app.services.transaction_service import record_deposit, record_withdrawal
 
+# Loads an account and locks its row for the rest of the transaction, so two
+# tellers working on the same account cannot both read the old balance and
+# overwrite each other's change.
+from app.services.account_service import get_account_for_update
+
 
 # Create a router for account related endpoints.
 router = APIRouter()
