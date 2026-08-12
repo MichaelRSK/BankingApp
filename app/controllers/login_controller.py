@@ -20,23 +20,21 @@ router = APIRouter(
 )
 
 
-class UserInfo:
+class UserInfo(BaseModel):
     username: str
     password: str
-    roles: str
-    sub: str
-    email: str
+    roles: str = None
+    sub: str = None
+    email: str = None
 
 
 @router.post("/login")
 def try_login(credentials: UserInfo, db: Session = Depends(get_db)):
-
-
+    
     return attempt_login(db, credentials.username, credentials.password)
 
 
 @router.post("/registration")
-def try_login(info: UserInfo, db: Session = Depends(get_db)):
-
-
+def register(info: UserInfo, db: Session = Depends(get_db)):
+    
     return register_user(db, info.username, info.password, info.roles, info.email, info.sub)

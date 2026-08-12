@@ -22,7 +22,7 @@ from app.db.base import Base
 # which class each row is, and SQLAlchemy uses it to rebuild the right
 # subclass when loading a row back out.
 class User(Base):
-    __tablename__ = "credentials"
+    __tablename__ = "users"
 
     # id = Column(Integer, primary_key=True)
     username = Column(
@@ -67,6 +67,6 @@ class User(Base):
             password=pwd,
             sub=sb,
             email=eml,
-            roles=rls
+            roles=rls,
             **kwargs,
         )

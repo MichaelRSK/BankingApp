@@ -8,9 +8,9 @@ from app.models.login import User
 
 import bcrypt
 
-from jose import jwt
+# from jose import jwt
 
-import datetime
+from datetime import datetime, timedelta
 
 import os
 
@@ -24,12 +24,12 @@ def create_token(
     user: User
 ):
     data = {
-        "email": user["email"], 
-        "sub": user["sub"],
-        "roles": user["roles"]
+        "email": user.email, 
+        "sub": user.sub,
+        "roles": user.roles
     }
 
-    expire = datetime.utcnow() + datetime.timedelta(minutes=expire_time)
+    expire = datetime.now() + timedelta(minutes=int(expire_time))
 
     data["exp"] = expire
 
@@ -47,8 +47,12 @@ def attempt_login(
         .filter(User.username == username)
         .one()
     )
+    
+    # return {
+    #     "message": user.password
+    # }
 
-    if not bcrypt.checkpw(password.encode(), user["password"]):
+    if not bcrypt.checkpw(password.encode(), user.password.encode()):
         return {
             "message": "Please enter correct credentials."
         }
@@ -64,7 +68,7 @@ def register_user(db, username, password, roles, email, sub):
     salt = bcrypt.gensalt()
     encrypted_pass = bcrypt.hashpw(password.encode(), salt)
     
-    new_user = User(username, encrypted_pass, roles, email, sub)
+    new_user = User(username, encrypted_pass.decode(), roles, email, sub)
 
     db.add(new_user)
     db.commit()
