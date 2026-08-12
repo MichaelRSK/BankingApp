@@ -24,6 +24,11 @@ from app.services.branch_service import get_branch
 from app.core.dependencies import get_current_user, require_role, CurrentUser
 
 
+# record_deposit and record_withdrawal write a history row for a single
+# account move, the same way record_transfer does for a two-account move.
+from app.services.transaction_service import record_deposit, record_withdrawal
+
+
 # Create a router for account related endpoints.
 router = APIRouter()
 
@@ -121,3 +126,60 @@ def get_filtered_accounts(branch_code: int, min_balance: float, db: Session = De
 
     # An empty list is a valid answer here, it just means nothing matched.
     return [account_to_response(account) for account in matching_accounts]
+
+
+
+# record_deposit and record_withdrawal write a history row for a single
+# account move, the same way record_transfer does for a two-account move.
+class DepositWithdrawRequest(BaseModel):
+    amount: float
+
+
+# POST /api/v1/accounts/{account_number}/deposit
+# A teller (or manager/admin) deposits cash directly into one account.
+# No second account is involved, unlike a transfer.
+@router.post("/api/v1/accounts/{account_number}/deposit")
+def deposit_to_account(
+    account_number: int,
+    request: DepositWithdrawRequest,
+    db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(require_role("TELLER", "BRANCH_MANAGER", "ADMIN")),
+):
+    if request.amount <= 0:
+        raise HTTPException(status_code=400, detail="Deposit amount must be greater than zero")
+
+    account = get_account_for_update(db, account_number)
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    account.deposit(request.amount)
+    record_deposit(db, account_number, request.amount)
+    db.commit()
+
+    return account_to_response(account)
+
+
+# POST /api/v1/accounts/{account_number}/withdraw
+# A teller (or manager/admin) withdraws cash directly from one account.
+@router.post("/api/v1/accounts/{account_number}/withdraw")
+def withdraw_from_account(
+    account_number: int,
+    request: DepositWithdrawRequest,
+    db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(require_role("TELLER", "BRANCH_MANAGER", "ADMIN")),
+):
+    if request.amount <= 0:
+        raise HTTPException(status_code=400, detail="Withdrawal amount must be greater than zero")
+
+    account = get_account_for_update(db, account_number)
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    if account.get_balance() < request.amount:
+        raise HTTPException(status_code=400, detail="Insufficient funds")
+
+    account.withdraw(request.amount)
+    record_withdrawal(db, account_number, request.amount)
+    db.commit()
+
+    return account_to_response(account)
