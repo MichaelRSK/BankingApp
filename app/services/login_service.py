@@ -36,7 +36,7 @@ def create_token(
     return jwt.encode(data, secret_key, algorithm=algorithm)
 
 
-def try_login(
+def attempt_login(
     db: Session,
     username: str,
     password: str
@@ -49,7 +49,9 @@ def try_login(
     )
 
     if not bcrypt.checkpw(password.encode(), user["password"]):
-        pass
+        return {
+            "message": "Please enter correct credentials."
+        }
 
 
     return {

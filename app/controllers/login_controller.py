@@ -14,7 +14,7 @@ from app.services.account_service import create_account, filter_accounts
 # Used to check that the customer and branch an account points at actually
 # exist, so we can answer with a clear 404 instead of letting the database
 # raise a foreign key error.
-from app.services.login_service import login_exists, create_token
+from app.services.login_service import attempt_login
 
 # Create a router for account related endpoints.
 router = APIRouter(
@@ -32,7 +32,7 @@ class LoginRequest:
 def try_login(credentials: LoginRequest, db: Session = Depends(get_db)):
 
 
-    if try_login(
+    if attempt_login(
         credentials.username,
         credentials.password
     ):
