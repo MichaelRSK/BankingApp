@@ -1,4 +1,4 @@
-import { createContext, useState, useContext } from 'react';
+import { createContext, useState, useEffect, useContext } from 'react';
 
 const AuthContext = createContext();
 
@@ -8,7 +8,7 @@ export const AuthProvider = ({ children }) => {
 
   // Check if a user session exists on app mount
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
+    const storedUser = localStorage.getItem('access_token');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
@@ -18,13 +18,13 @@ export const AuthProvider = ({ children }) => {
   // Login handler
   const login = (userData) => {
     setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('access_token', JSON.stringify(userData));
   };
 
   // Logout handler
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('user');
+    localStorage.removeItem('access_token');
   };
 
   // Pack states and functions together
@@ -37,9 +37,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext value={value}>
       {!loading && children}
-    </AuthContext.Provider>
+    </AuthContext>
   );
 };
 

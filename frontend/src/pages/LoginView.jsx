@@ -14,6 +14,8 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import axios from "axios";
+import { useAuth } from "../context/AuthContext.jsx";
+import { useNavigate } from 'react-router-dom';
 
 const ACCENT = "#E8664A";
 const BG = "#101418";
@@ -29,6 +31,9 @@ export default function LoginView() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const { login } = useAuth();
+  const navigate = useNavigate();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -41,13 +46,14 @@ export default function LoginView() {
     setSubmitting(true);
     // Mock auth call — replace with your real request.
 
-    const response = await axios.post('localhost:8000/api/v1/login', {
+    const response = await axios.post('http://127.0.0.1:8000/api/v1/login', {
       username: username,
       password: password
     });
 
-    if(response.token) {
-      useAuth(response.token);
+    if(response.data.access_token) {
+      login(response.data.access_token);
+      navigate('/dashboard');
     }
   };
 
@@ -115,7 +121,7 @@ export default function LoginView() {
             htmlFor="username"
             sx={{ display: "block", fontSize: "0.75rem", color: SUBTEXT, mb: 0.75 }}
           >
-            Email
+            Username
           </Typography>
           <TextField
             id="username"
@@ -124,7 +130,7 @@ export default function LoginView() {
             size="small"
             placeholder="XxJontronxX"
             autoComplete="username"
-            value={email}
+            value={username}
             onChange={(e) => setUsername(e.target.value)}
             sx={{ ...fieldSx, mb: 2 }}
           />
