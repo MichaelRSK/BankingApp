@@ -4,12 +4,14 @@ from fastapi import APIRouter, HTTPException, Depends
 # BaseModel is used to define the shape of the incoming request body.
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from app.security.rbac import require_roles
 
 # get_db opens a session for this request and closes it afterwards.
 from app.db.session import get_db
 
 # Import the service functions that contain the actual logic.
-from app.services.account_service import create_account, filter_accounts
+from app.services.account_service import create_account, filter_accounts, get_account
+
 
 # Used to check that the customer and branch an account points at actually
 # exist, so we can answer with a clear 404 instead of letting the database
@@ -86,7 +88,12 @@ def open_account(request: AccountCreateRequest, db: Session = Depends(get_db)):
 # branch_code and min_balance are query parameters, FastAPI reads them from
 # the URL because they are not part of the path and not a request body.
 @router.get("/api/v1/accounts")
-def get_filtered_accounts(branch_code: int, min_balance: float, db: Session = Depends(get_db)):
+def get_filtered_accounts(
+    branch_code: int,
+    min_balance: float,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles("CUSTOMER"))
+):
     # A balance cannot be negative, so neither can the minimum we filter on.
     if min_balance < 0:
         raise HTTPException(status_code=400, detail="min_balance cannot be negative")
@@ -94,5 +101,13 @@ def get_filtered_accounts(branch_code: int, min_balance: float, db: Session = De
     # Call the service layer to do the actual filtering.
     matching_accounts = filter_accounts(db, branch_code, min_balance)
 
+    current_customer_id = int(current_user["sub"])
+
+    matching_accounts = [
+    account
+    for account in matching_accounts
+    if account.owner_id == current_customer_id
+    ]
+    
     # An empty list is a valid answer here, it just means nothing matched.
     return [account_to_response(account) for account in matching_accounts]

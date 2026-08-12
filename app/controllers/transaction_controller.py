@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from app.security.rbac import require_roles
 
 from app.db.session import get_db
 
@@ -29,7 +30,11 @@ class TransferRequest(BaseModel):
 
 # Transfers money from one account to another
 @router.post("/transfer")
-def transfer_money(transfer: TransferRequest, db: Session = Depends(get_db)):
+def transfer_money(
+    transfer: TransferRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles("CUSTOMER"))
+):
 
     # A transfer cannot be zero or negative
     if transfer.amount <= 0:
@@ -52,8 +57,15 @@ def transfer_money(transfer: TransferRequest, db: Session = Depends(get_db)):
     # other holds and neither would ever finish. That is a deadlock, and
     # always taking the locks in the same order makes it impossible.
     locked_accounts = {}
-    for account_id in sorted([transfer.from_account_id, transfer.to_account_id]):
-        locked_accounts[account_id] = get_account_for_update(db, account_id)
+
+    for account_id in sorted([
+        transfer.from_account_id,
+        transfer.to_account_id
+    ]):
+        locked_accounts[account_id] = get_account_for_update(
+            db,
+            account_id
+        )
 
     source_account = locked_accounts[transfer.from_account_id]
     destination_account = locked_accounts[transfer.to_account_id]
@@ -71,6 +83,15 @@ def transfer_money(transfer: TransferRequest, db: Session = Depends(get_db)):
             detail="Destination account not found"
         )
 
+    # Make sure the customer owns the account they are transferring from
+    current_customer_id = int(current_user["sub"])
+
+    if source_account.owner_id != current_customer_id:
+        raise HTTPException(
+            status_code=403,
+            detail="You cannot transfer money from this account"
+        )
+
     # Make sure the source account has enough money
     if source_account.get_balance() < transfer.amount:
         raise HTTPException(
@@ -85,7 +106,12 @@ def transfer_money(transfer: TransferRequest, db: Session = Depends(get_db)):
     destination_account.deposit(transfer.amount)
 
     # Record the completed transfer so it shows up in the history endpoint
-    record_transfer(db, transfer.from_account_id, transfer.to_account_id, transfer.amount)
+    record_transfer(
+        db,
+        transfer.from_account_id,
+        transfer.to_account_id,
+        transfer.amount
+    )
 
     # One commit saves all three changes together. If anything above had
     # raised, the session would be closed without committing and PostgreSQL
@@ -121,9 +147,18 @@ def transaction_to_response(transaction):
 # start_date and type are query parameters, FastAPI reads them from the URL
 # because they are not part of the path and not a request body.
 @router.get("")
-def get_filtered_transactions(start_date: str, type: str, db: Session = Depends(get_db)):
+def get_filtered_transactions(
+    start_date: str,
+    type: str,
+    db: Session = Depends(get_db)
+):
+
     # Call the service layer to do the actual filtering.
-    matching_transactions = filter_transactions(db, start_date, type)
+    matching_transactions = filter_transactions(
+        db,
+        start_date,
+        type
+    )
 
     # The service returns None when start_date was not a real date.
     if matching_transactions is None:
@@ -133,4 +168,7 @@ def get_filtered_transactions(start_date: str, type: str, db: Session = Depends(
         )
 
     # Shape each transaction for the response.
-    return [transaction_to_response(t) for t in matching_transactions]
+    return [
+        transaction_to_response(t)
+        for t in matching_transactions
+    ]
