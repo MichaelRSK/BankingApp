@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+
 import {
   Alert,
   Box,
@@ -18,6 +19,10 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+
+import AnalyticsIcon from "@mui/icons-material/Analytics";
+import PaidIcon from "@mui/icons-material/Paid";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 
 import api from "../api/api";
 
@@ -53,28 +58,21 @@ function AnalyticsView() {
     setSearched(true);
 
     try {
-      const response = await api.get(
-        "/api/v1/transactions",
-        {
-          params: {
-            start_date: startDate,
-            type: transactionType,
-          },
-        }
-      );
+      const response = await api.get("/api/v1/transactions", {
+        params: {
+          start_date: startDate,
+          type: transactionType,
+        },
+      });
 
       setTransactions(response.data);
     } catch (err) {
       console.error(err);
 
       if (err.response?.status === 401) {
-        setError(
-          "You must be logged in to view analytics."
-        );
+        setError("You must be logged in to view analytics.");
       } else if (err.response?.status === 403) {
-        setError(
-          "You do not have permission to view this information."
-        );
+        setError("You do not have permission to view this information.");
       } else {
         setError(
           err.response?.data?.detail ||
@@ -88,6 +86,7 @@ function AnalyticsView() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
+      {/* PAGE TITLE */}
       <Typography
         variant="h4"
         component="h1"
@@ -109,6 +108,7 @@ function AnalyticsView() {
         Search transaction activity and review account activity statistics.
       </Typography>
 
+      {/* SEARCH AREA */}
       <Card
         variant="outlined"
         sx={{
@@ -136,9 +136,7 @@ function AnalyticsView() {
               label="Start Date"
               type="date"
               value={startDate}
-              onChange={(event) =>
-                setStartDate(event.target.value)
-              }
+              onChange={(event) => setStartDate(event.target.value)}
               InputLabelProps={{
                 shrink: true,
               }}
@@ -149,9 +147,7 @@ function AnalyticsView() {
               select
               label="Transaction Type"
               value={transactionType}
-              onChange={(event) =>
-                setTransactionType(event.target.value)
-              }
+              onChange={(event) => setTransactionType(event.target.value)}
               fullWidth
             >
               <MenuItem value="TRANSFER">
@@ -185,6 +181,7 @@ function AnalyticsView() {
         </CardContent>
       </Card>
 
+      {/* ERROR MESSAGE */}
       {error && (
         <Alert
           severity="error"
@@ -196,6 +193,7 @@ function AnalyticsView() {
         </Alert>
       )}
 
+      {/* ANALYTICS CARDS */}
       <Stack
         direction={{
           xs: "column",
@@ -206,6 +204,7 @@ function AnalyticsView() {
           mb: 4,
         }}
       >
+        {/* TRANSACTIONS */}
         <Card
           variant="outlined"
           sx={{
@@ -213,26 +212,42 @@ function AnalyticsView() {
           }}
         >
           <CardContent>
-            <Typography
-              variant="body1"
-              sx={{
-                mb: 1,
-              }}
+            <Stack
+              direction="row"
+              spacing={2}
+              alignItems="center"
             >
-              Transactions
-            </Typography>
+              <ReceiptLongIcon
+                sx={{
+                  fontSize: 36,
+                  color: "#21b66f",
+                }}
+              />
 
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 600,
-              }}
-            >
-              {transactions.length}
-            </Typography>
+              <Box>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    mb: 1,
+                  }}
+                >
+                  Transactions
+                </Typography>
+
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontWeight: 600,
+                  }}
+                >
+                  {transactions.length}
+                </Typography>
+              </Box>
+            </Stack>
           </CardContent>
         </Card>
 
+        {/* TOTAL AMOUNT */}
         <Card
           variant="outlined"
           sx={{
@@ -240,26 +255,42 @@ function AnalyticsView() {
           }}
         >
           <CardContent>
-            <Typography
-              variant="body1"
-              sx={{
-                mb: 1,
-              }}
+            <Stack
+              direction="row"
+              spacing={2}
+              alignItems="center"
             >
-              Total Amount
-            </Typography>
+              <PaidIcon
+                sx={{
+                  fontSize: 36,
+                  color: "#21b66f",
+                }}
+              />
 
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 600,
-              }}
-            >
-              ${totalAmount.toFixed(2)}
-            </Typography>
+              <Box>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    mb: 1,
+                  }}
+                >
+                  Total Amount
+                </Typography>
+
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontWeight: 600,
+                  }}
+                >
+                  ${totalAmount.toFixed(2)}
+                </Typography>
+              </Box>
+            </Stack>
           </CardContent>
         </Card>
 
+        {/* AVERAGE AMOUNT */}
         <Card
           variant="outlined"
           sx={{
@@ -267,27 +298,43 @@ function AnalyticsView() {
           }}
         >
           <CardContent>
-            <Typography
-              variant="body1"
-              sx={{
-                mb: 1,
-              }}
+            <Stack
+              direction="row"
+              spacing={2}
+              alignItems="center"
             >
-              Average Amount
-            </Typography>
+              <AnalyticsIcon
+                sx={{
+                  fontSize: 36,
+                  color: "#21b66f",
+                }}
+              />
 
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 600,
-              }}
-            >
-              ${averageAmount.toFixed(2)}
-            </Typography>
+              <Box>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    mb: 1,
+                  }}
+                >
+                  Average Amount
+                </Typography>
+
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontWeight: 600,
+                  }}
+                >
+                  ${averageAmount.toFixed(2)}
+                </Typography>
+              </Box>
+            </Stack>
           </CardContent>
         </Card>
       </Stack>
 
+      {/* LOADING */}
       {loading ? (
         <Box
           sx={{
@@ -299,6 +346,7 @@ function AnalyticsView() {
           <CircularProgress />
         </Box>
       ) : (
+        /* TRANSACTION TABLE */
         <Card variant="outlined">
           <TableContainer>
             <Table>
@@ -306,12 +354,8 @@ function AnalyticsView() {
                 <TableRow>
                   <TableCell>ID</TableCell>
                   <TableCell>Type</TableCell>
-                  <TableCell>
-                    From Account
-                  </TableCell>
-                  <TableCell>
-                    To Account
-                  </TableCell>
+                  <TableCell>From Account</TableCell>
+                  <TableCell>To Account</TableCell>
                   <TableCell align="right">
                     Amount
                   </TableCell>
@@ -321,47 +365,40 @@ function AnalyticsView() {
 
               <TableBody>
                 {transactions.length > 0 ? (
-                  transactions.map(
-                    (transaction) => (
-                      <TableRow
-                        key={transaction.id}
-                        hover
-                      >
-                        <TableCell>
-                          {transaction.id}
-                        </TableCell>
+                  transactions.map((transaction) => (
+                    <TableRow
+                      key={transaction.id}
+                      hover
+                    >
+                      <TableCell>
+                        {transaction.id}
+                      </TableCell>
 
-                        <TableCell>
-                          {transaction.type}
-                        </TableCell>
+                      <TableCell>
+                        {transaction.type}
+                      </TableCell>
 
-                        <TableCell>
-                          {transaction.from_account_id ??
-                            "--"}
-                        </TableCell>
+                      <TableCell>
+                        {transaction.from_account_id ?? "--"}
+                      </TableCell>
 
-                        <TableCell>
-                          {transaction.to_account_id ??
-                            "--"}
-                        </TableCell>
+                      <TableCell>
+                        {transaction.to_account_id ?? "--"}
+                      </TableCell>
 
-                        <TableCell align="right">
-                          $
-                          {Number(
-                            transaction.amount
-                          ).toFixed(2)}
-                        </TableCell>
+                      <TableCell align="right">
+                        ${Number(transaction.amount).toFixed(2)}
+                      </TableCell>
 
-                        <TableCell>
-                          {transaction.timestamp
-                            ? new Date(
-                                transaction.timestamp
-                              ).toLocaleString()
-                            : "--"}
-                        </TableCell>
-                      </TableRow>
-                    )
-                  )
+                      <TableCell>
+                        {transaction.timestamp
+                          ? new Date(
+                              transaction.timestamp
+                            ).toLocaleString()
+                          : "--"}
+                      </TableCell>
+                    </TableRow>
+                  ))
                 ) : (
                   <TableRow>
                     <TableCell
@@ -369,6 +406,7 @@ function AnalyticsView() {
                       align="center"
                       sx={{
                         py: 5,
+                        color: "text.secondary",
                       }}
                     >
                       {searched
