@@ -17,7 +17,7 @@ import api from "../api/api";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useNavigate } from 'react-router-dom';
 
-const ACCENT = "#E8664A";
+const ACCENT = "#21b66f";
 const BG = "#101418";
 const PANEL = "#171B21";
 const BORDER = "#242931";
