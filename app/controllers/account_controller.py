@@ -148,7 +148,7 @@ def deposit_to_account(
     account_number: int,
     request: DepositWithdrawRequest,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_role("TELLER", "BRANCH_MANAGER", "ADMIN")),
+    current_user: CurrentUser = Depends(require_role("CUSTOMER", "TELLER", "BRANCH_MANAGER", "ADMIN")),
 ):
     if request.amount <= 0:
         raise HTTPException(status_code=400, detail="Deposit amount must be greater than zero")
@@ -157,6 +157,9 @@ def deposit_to_account(
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
 
+    if "CUSTOMER" in current_user.roles and account.owner_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Cannot deposit to account you do not own")
+    
     account.deposit(request.amount)
     record_deposit(db, account_number, request.amount)
     db.commit()
@@ -171,7 +174,7 @@ def withdraw_from_account(
     account_number: int,
     request: DepositWithdrawRequest,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_role("TELLER", "BRANCH_MANAGER", "ADMIN")),
+    current_user: CurrentUser = Depends(require_role("CUSTOMER", "TELLER", "BRANCH_MANAGER", "ADMIN")),
 ):
     if request.amount <= 0:
         raise HTTPException(status_code=400, detail="Withdrawal amount must be greater than zero")
@@ -182,6 +185,9 @@ def withdraw_from_account(
 
     if account.get_balance() < request.amount:
         raise HTTPException(status_code=400, detail="Insufficient funds")
+    
+    if "CUSTOMER" in current_user.roles and account.owner_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Cannot withdraw account you do not own")
 
     account.withdraw(request.amount)
     record_withdrawal(db, account_number, request.amount)
