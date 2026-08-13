@@ -36,13 +36,22 @@ class LoginRequest(BaseModel):
 # Separate from LoginRequest on purpose. Logging in needs two fields, and
 # putting all five on one model would make roles and sub look optional at
 # login and required here, when the opposite is true.
+#
+# sub, name and branch_code are all optional here because two different
+# callers use this endpoint. A CUSTOMER signing up through the app sends
+# name and branch_code, and never sub, since register_user derives a real
+# sub from the customers row it creates. A staff account created by hand
+# (e.g. through Postman) has no customers row, so it sends sub directly
+# and leaves name/branch_code out.
 class RegistrationRequest(BaseModel):
     username: str
     password: str
     roles: str
     sub: str
     email: str
-
+    sub: str = None
+    name: str = None
+    branch_code: int = None
 
 # POST /api/v1/login
 # Exchanges a username and password for a signed access token.
@@ -78,6 +87,17 @@ def try_login(credentials: LoginRequest, db: Session = Depends(get_db)):
 # Creates a new user. 201 because a new resource now exists.
 @router.post("/registration", status_code=201)
 def try_registration(info: RegistrationRequest, db: Session = Depends(get_db)):
+    
+    # A CUSTOMER needs a matching customers row created alongside the login,
+    # and that row needs a name and branch_code. Checked here, before
+    # touching the database, same as the name/email check in
+    # customer_controller.py's add_customer.
+    if info.roles == "CUSTOMER" and (not info.name or not info.branch_code):
+        raise HTTPException(
+            status_code=400,
+            detail="name and branch_code are required to register as a customer",
+        )
+
     new_user = register_user(
         db,
         username=info.username,
@@ -85,6 +105,8 @@ def try_registration(info: RegistrationRequest, db: Session = Depends(get_db)):
         roles=info.roles,
         email=info.email,
         sub=info.sub,
+        name=info.name,
+        branch_code=info.branch_code,
     )
 
     # The service returns None when the username, sub or email is already
