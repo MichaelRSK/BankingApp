@@ -7,6 +7,10 @@ import AnalyticsView from './pages/AnalyticsView';
 import AccountView from './pages/AccountView';
 import LoginView from './pages/LoginView';
 
+// The public sign-up page, no ProtectedRoute wrapper since a new customer
+// isn't logged in yet when they land here.
+import SignUpView from './pages/SignUpView';
+
 // The new manager-only page, gets rendered instead of the regular
 // Dashboard when the logged-in user's role calls for it.
 import ManagerDashboard from './pages/ManagerDashboard';
@@ -74,6 +78,7 @@ function App() {
             }
           />
           <Route path="/login" element={<LoginView />} />
+          <Route path="/signup" element={<SignUpView />} />
           {/* Unknown paths fall back to the login */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
