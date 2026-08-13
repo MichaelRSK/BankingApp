@@ -9,7 +9,11 @@ import {
   Button,
   Alert,
   Link,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
@@ -36,6 +40,32 @@ const PANEL = "#171B21";
 const BORDER = "#242931";
 const TEXT = "#F2EFEA";
 const SUBTEXT = "#8A8F98";
+
+
+// Static FAQ content shown below the login form. Plain hardcoded text, no
+// backend call involved, just something a visitor can scroll down to read.
+const FAQS = [
+  {
+    question: "How do I create an account?",
+    answer:
+      "Click \"Sign up\" below the login form. You'll need a full name, username, email, branch code, and password. A $0 Checking account is opened for you automatically.",
+  },
+  {
+    question: "I forgot my password, what do I do?",
+    answer:
+      "Password resets aren't available yet through the site. Contact your branch directly for help regaining access.",
+  },
+  {
+    question: "What can I do once I'm logged in?",
+    answer:
+      "Customers can view their account balances and recent activity on the Dashboard, search accounts, and transfer money between accounts. Branch managers and admins see branch performance metrics instead.",
+  },
+  {
+    question: "Is my information secure?",
+    answer:
+      "Passwords are never stored in plain text, and every page that shows account data requires you to be signed in first.",
+  },
+];
 
 export default function LoginView() {
   // Controlled inputs for the two fields on this form.
@@ -286,6 +316,44 @@ export default function LoginView() {
             Sign up
           </Link>
         </Typography>
+        
+        {/* FAQ section, sits below the fold so it's reached by scrolling
+            rather than crowding the login form itself. */}
+        <Box sx={{ mt: 6, mb: 4 }}>
+          <Typography
+            variant="h6"
+            sx={{ color: TEXT, fontWeight: 600, mb: 2, textAlign: "center" }}
+          >
+            Frequently Asked Questions
+          </Typography>
+
+          {FAQS.map((faq, index) => (
+            <Accordion
+              key={index}
+              disableGutters
+              sx={{
+                backgroundColor: PANEL,
+                border: `1px solid ${BORDER}`,
+                color: TEXT,
+                mb: 1,
+                "&:before": { display: "none" },
+              }}
+            >
+              <AccordionSummary
+                expandIcon={<ExpandMoreIcon sx={{ color: SUBTEXT }} />}
+              >
+                <Typography sx={{ fontSize: "0.875rem", fontWeight: 600 }}>
+                  {faq.question}
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Typography sx={{ fontSize: "0.8125rem", color: SUBTEXT }}>
+                  {faq.answer}
+                </Typography>
+              </AccordionDetails>
+            </Accordion>
+          ))}
+        </Box>
       </Box>
     </Box>
   );
