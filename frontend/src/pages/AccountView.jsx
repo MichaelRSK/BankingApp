@@ -7,6 +7,7 @@ import {
   CardContent,
   CircularProgress,
   Container,
+  MenuItem,
   Stack,
   TextField,
   Typography,
@@ -39,6 +40,10 @@ function AccountView() {
     useState("");
   const [transferAmount, setTransferAmount] =
     useState("");
+  // Which of the three transaction types the form is currently set to.
+  // Drives both which fields are shown and which endpoint gets called.
+  const [transactionType, setTransactionType] =
+    useState("Transfer");
   // Shown in a green Alert when a transfer succeeds.
   const [transferMessage, setTransferMessage] =
     useState("");
@@ -94,32 +99,54 @@ function AccountView() {
     }
   };
 
-  // Sends the transfer to the backend and reports the result. Separate
-  // from loadAccounts above since it's a different action entirely,
-  // moving money rather than reading it.
+  // Sends the transfer/deposit/withdrawal to the backend and reports the
+  // result. Separate from loadAccounts above since it's a different action
+  // entirely, moving money rather than reading it.
+  //
+  // "To Account Number" doubles as the single account field for Deposit
+  // and Withdraw, since "From Account Number" is hidden for those two
+  // (there's only one account involved, not a pair).
   const handleTransfer = async () => {
     // Clear any previous result before trying again.
     setTransferMessage("");
     setTransferError("");
 
     try {
-      const response = await api.post(
-        "/api/v1/transactions/transfer",
-        {
-          // Form inputs are strings by default, the backend expects
-          // numbers, so each one gets converted here before sending.
-          from_account_id: Number(fromAccount),
-          to_account_id: Number(toAccount),
-          amount: Number(transferAmount),
-        }
-      );
+      let response;
+
+      if (transactionType === "Deposit") {
+        response = await api.post(
+          `/api/v1/accounts/${toAccount}/deposit`,
+          {
+            amount: Number(transferAmount),
+          }
+        );
+      } else if (transactionType === "Withdraw") {
+        response = await api.post(
+          `/api/v1/accounts/${toAccount}/withdraw`,
+          {
+            amount: Number(transferAmount),
+          }
+        );
+      } else {
+        response = await api.post(
+          "/api/v1/transactions/transfer",
+          {
+            // Form inputs are strings by default, the backend expects
+            // numbers, so each one gets converted here before sending.
+            from_account_id: Number(fromAccount),
+            to_account_id: Number(toAccount),
+            amount: Number(transferAmount),
+          }
+        );
+      }
 
       // The backend returns the updated source balance on success, shown
       // directly so the user can see the transfer actually went through.
       setTransferMessage(
-        `Transfer successful. New balance: $${response.data.source_balance}`
+        `${transactionType} successful. New balance: $${response.data.source_balance}`
       );
-      // Reset the form now that the transfer completed.
+      // Reset the form now that the transaction completed.
       setFromAccount("");
       setToAccount("");
       setTransferAmount("");
@@ -127,17 +154,17 @@ function AccountView() {
       console.error(err);
 
       // 403 specifically means the backend's ownership check rejected the
-      // transfer, a CUSTOMER trying to move money out of an account that
+      // transaction, a CUSTOMER trying to move money on an account that
       // isn't theirs. Anything else falls back to whatever detail message
       // the backend sent, or a generic message if there isn't one.
       if (err.response?.status === 403) {
         setTransferError(
-          "Cannot transfer from an account you don't own."
+          "Cannot complete this transaction on an account you don't own."
         );
       } else {
         setTransferError(
           err.response?.data?.detail ||
-            "Transfer failed."
+            `${transactionType} failed.`
         );
       }
     }
@@ -507,21 +534,51 @@ function AccountView() {
           )}
 
           <Stack spacing={2}>
-            {/* Each field is a controlled input, tied directly to its own
-                piece of state, same pattern the search fields above use. */}
+            {/* Transaction type selector. Controls which fields show below
+                and which endpoint handleTransfer calls. */}
             <TextField
-              label="From Account Number"
-              value={fromAccount}
+              select
+              label="Transaction Type"
+              value={transactionType}
               onChange={(event) =>
-                setFromAccount(
+                setTransactionType(
                   event.target.value
                 )
               }
               fullWidth
-            />
+            >
+              <MenuItem value="Deposit">
+                Deposit
+              </MenuItem>
+              <MenuItem value="Withdraw">
+                Withdraw
+              </MenuItem>
+              <MenuItem value="Transfer">
+                Transfer
+              </MenuItem>
+            </TextField>
+
+            {/* Only Transfer involves two accounts, so this field only
+                makes sense, and only shows, when Transfer is selected. */}
+            {transactionType === "Transfer" && (
+              <TextField
+                label="From Account Number"
+                value={fromAccount}
+                onChange={(event) =>
+                  setFromAccount(
+                    event.target.value
+                  )
+                }
+                fullWidth
+              />
+            )}
 
             <TextField
-              label="To Account Number"
+              label={
+                transactionType === "Transfer"
+                  ? "To Account Number"
+                  : "Account Number"
+              }
               value={toAccount}
               onChange={(event) =>
                 setToAccount(
@@ -554,7 +611,7 @@ function AccountView() {
                 },
               }}
             >
-              TRANSFER
+              {transactionType.toUpperCase()}
             </Button>
           </Stack>
         </CardContent>
