@@ -30,6 +30,10 @@ import { useNavigate, Link as RouterLink } from 'react-router-dom';
 // Same palette as LoginView.jsx, kept in sync so the two pages read as one
 // flow rather than two different screens.
 const ACCENT = "#21b66f";
+// Hover shade for the accent button. The same darker green the buttons on
+// AccountView, AnalyticsView and LimitsView already use, so every primary
+// button in the app darkens to the same colour on hover.
+const ACCENT_HOVER = "#18985b";
 const BG = "#101418";
 const PANEL = "#171B21";
 const BORDER = "#242931";
@@ -337,7 +341,7 @@ export default function SignUpView() {
               textTransform: "none",
               borderRadius: "8px",
               py: 1.1,
-              "&:hover": { backgroundColor: "#f0785d" },
+              "&:hover": { backgroundColor: ACCENT_HOVER },
               "&.Mui-disabled": { backgroundColor: `${ACCENT}99`, color: BG },
             }}
           >
