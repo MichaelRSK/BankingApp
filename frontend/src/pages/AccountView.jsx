@@ -342,13 +342,21 @@ function AccountView() {
                   variant="outlined"
                 >
                   <CardContent>
+                    {/* justifyContent goes in sx rather than being passed
+                        as a prop. MUI dropped the system props it used to
+                        accept directly on Stack, so the bare attribute was
+                        silently ignored and the balance sat next to the
+                        account details instead of at the far edge. */}
                     <Stack
                       direction={{
                         xs: "column",
                         md: "row",
                       }}
-                      justifyContent="space-between"
                       spacing={2}
+                      sx={{
+                        justifyContent:
+                          "space-between",
+                      }}
                     >
                       <Box>
                         <Typography

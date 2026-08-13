@@ -5,6 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Dashboard from './pages/Dashboard';
 import AnalyticsView from './pages/AnalyticsView';
 import AccountView from './pages/AccountView';
+import LimitsView from './pages/LimitsView';
 import LoginView from './pages/LoginView';
 
 // The new manager-only page, gets rendered instead of the regular
@@ -70,6 +71,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <AccountView />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/limits"
+            element={
+              <ProtectedRoute>
+                <LimitsView />
               </ProtectedRoute>
             }
           />

@@ -36,6 +36,7 @@ const NAV_LINKS = [
   { label: 'Dashboard', path: '/dashboard' },
   { label: 'Analytics', path: '/analytics' },
   { label: 'Accounts', path: '/accounts' },
+  { label: 'Limits', path: '/limits' },
 ];
 
 // The shield mark from public/favicon.svg. The navy backing plate is dropped

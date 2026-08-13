@@ -212,10 +212,17 @@ function AnalyticsView() {
           }}
         >
           <CardContent>
+            {/* alignItems goes in sx rather than being passed as a prop, on
+                this card and the two below it. MUI dropped the system props
+                it used to accept directly on Stack, so the bare attribute
+                was silently ignored and the icon sat at the top of the row
+                instead of level with the text beside it. */}
             <Stack
               direction="row"
               spacing={2}
-              alignItems="center"
+              sx={{
+                alignItems: "center",
+              }}
             >
               <ReceiptLongIcon
                 sx={{
@@ -258,7 +265,9 @@ function AnalyticsView() {
             <Stack
               direction="row"
               spacing={2}
-              alignItems="center"
+              sx={{
+                alignItems: "center",
+              }}
             >
               <PaidIcon
                 sx={{
@@ -301,7 +310,9 @@ function AnalyticsView() {
             <Stack
               direction="row"
               spacing={2}
-              alignItems="center"
+              sx={{
+                alignItems: "center",
+              }}
             >
               <AnalyticsIcon
                 sx={{
