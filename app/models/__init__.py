@@ -13,6 +13,7 @@ from app.models.customer import Customer
 from app.models.account import Account, SavingsAccount, CheckingAccount
 from app.models.transaction import Transaction
 from app.models.login import User
+from app.models.transfer_limit import TransferLimit, LimitType
 
 # Names re-exported from this package, so `from app.models import Account`
 # works from anywhere in the app.
@@ -25,4 +26,6 @@ __all__ = [
     "CheckingAccount",
     "Transaction",
     "User",
+    "TransferLimit",
+    "LimitType",
 ]

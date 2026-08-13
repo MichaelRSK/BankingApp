@@ -12,6 +12,14 @@ from app.services.transaction_service import record_transfer, filter_transaction
 # on each other.
 from app.services.account_service import get_account_for_update
 
+# The customer's own spending caps. check_transfer_against_limits reports a
+# refusal without moving anything, record_usage adds a completed transfer to
+# the running totals.
+from app.services.transfer_limit_service import (
+    check_transfer_against_limits,
+    record_usage,
+)
+
 # get_current_user verifies the JWT and identifies who's calling.
 # require_role builds on it to restrict a route to specific roles.
 # CurrentUser is the object both return, holding user_id, email, and roles.
@@ -97,6 +105,25 @@ def transfer_money(transfer: TransferRequest, db: Session = Depends(get_db), cur
             detail="Insufficient funds"
         )
 
+    # Check the transfer against the limits the customer set on themselves.
+    #
+    # This runs before withdraw() below, so a blocked transfer never takes
+    # the money out. Nothing has changed at this point, and raising leaves
+    # the session to be closed without committing, so both balances stay
+    # exactly as they were.
+    #
+    # The limits belong to source_account.owner_id, not current_user.user_id.
+    # A TELLER moving money on a customer's behalf passes the ownership check
+    # above without owning the account, and the customer's own cap should
+    # still apply to their money whoever pressed the button.
+    limit_rejection = check_transfer_against_limits(db, source_account.owner_id, transfer.amount)
+
+    if limit_rejection is not None:
+        raise HTTPException(
+            status_code=400,
+            detail=limit_rejection
+        )
+
     # Remove the money from the source account and add it to the destination.
     # These are the same withdraw() and deposit() methods from Module 1.
     # SQLAlchemy notices the balances changed and writes them out on commit.
@@ -105,6 +132,11 @@ def transfer_money(transfer: TransferRequest, db: Session = Depends(get_db), cur
 
     # Record the completed transfer so it shows up in the history endpoint
     record_transfer(db, transfer.from_account_id, transfer.to_account_id, transfer.amount)
+
+    # Add this transfer to the running totals on the customer's DAILY and
+    # MONTHLY limits. Like record_transfer, this stages the change without
+    # committing, so the usage is only saved if the whole transfer is.
+    record_usage(db, source_account.owner_id, transfer.amount)
 
     # One commit saves all three changes together. If anything above had
     # raised, the session would be closed without committing and PostgreSQL

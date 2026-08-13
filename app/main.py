@@ -17,6 +17,9 @@ from app.controllers.login_controller import router as login_router
 # Import the router that holds the /api/v1/branches endpoints.
 from app.controllers.branch_controller import router as branch_router
 
+# Import the router that holds the /api/v1/limits endpoints.
+from app.controllers.transfer_limit_controller import router as transfer_limit_router
+
 from fastapi.middleware.cors import CORSMiddleware
 
 # Create the FastAPI application.
@@ -54,3 +57,6 @@ app.include_router(login_router)
 
 # Register the branch router so its routes become part of the app.
 app.include_router(branch_router)
+
+# Register the transfer limit router so its routes become part of the app.
+app.include_router(transfer_limit_router)
