@@ -20,6 +20,16 @@ import bcrypt
 # login route and the request-verifying dependency can never drift apart.
 from app.core.security import create_access_token
 
+# Used to create the matching customers row when a CUSTOMER signs up, so
+# that row's real id can become the new user's sub instead of trusting
+# whatever the client sent.
+from app.services.customer_service import create_customer
+
+# Used to open a starter account for a new CUSTOMER at signup, so their
+# dashboard has something real to show instead of the empty
+# "Unable to load dashboard data" state a brand-new customer used to see.
+from app.services.account_service import create_account
+
 
 # Checks a username and password and hands back a signed access token.
 #
@@ -61,6 +71,13 @@ def attempt_login(
 
 
 # Creates a new user with a hashed password.
+# sub is now optional. For a CUSTOMER signing up through the app, sub is not
+# supplied at all, name and branch_code are, and the real sub is derived
+# below from the customers row this function creates. This is what was
+# missing before: nothing guaranteed users.sub actually pointed at a real
+# customers.id.
+# Staff accounts created by hand (e.g. through
+# Postman) can still pass sub directly since they have no customers row.
 #
 # Returns None when the username is already taken, matching how attempt_login
 # reports failure and leaving the status code to the controller.
@@ -70,7 +87,9 @@ def register_user(
     password: str,
     roles: str,
     email: str,
-    sub: str
+    sub: str = None,
+    name: str = None,
+    branch_code: int = None,
 ):
     # gensalt makes a fresh random salt every call, so two users with the same
     # password still end up with different hashes.
@@ -79,6 +98,35 @@ def register_user(
     # hashpw returns bytes. The column is a String, so it is decoded here
     # rather than letting SQLAlchemy store the repr of a bytes object.
     hashed_password = bcrypt.hashpw(password.encode(), salt).decode()
+
+    # Tracked separately so it can be cleaned up below if the user insert
+    # fails after this row has already been committed.
+    new_customer = None
+    new_account = None
+
+    if roles == "CUSTOMER":
+        # create_customer commits on its own and returns the row with its
+        # real database-generated id, so this becomes the one and only
+        # source of truth for sub, instead of a value typed on the frontend.
+        new_customer = create_customer(db, name, email, branch_code)
+        sub = str(new_customer.customer_id)
+    
+
+    # Opens a $0 Checking account in the same branch, owned by the
+        # customer row just created above. create_account also commits on
+        # its own, same as create_customer. Without this, a brand-new
+        # customer would have a login and a customer record but zero
+        # accounts, and their dashboard/account search would show nothing
+        # until staff opened one for them by hand.
+        new_account = create_account(
+            db,
+            name,
+            new_customer.customer_id,
+            "Checking",
+            0,
+            branch_code,
+        )
+
 
     # Passed by keyword. The constructor takes its arguments in the order
     # user, pwd, sb, eml, rls, which is not the order this function receives
@@ -99,6 +147,20 @@ def register_user(
         # Username, sub and email are all unique. Roll back so the session is
         # usable again, then let the controller answer with a 409.
         db.rollback()
+
+        # create_customer and create_account already committed above, so a failed user insert
+        # here (duplicate username/email) would otherwise leave an orphan
+        # customers row with no login attached to it. The account is deleted first since it has a foreign key
+        # pointing at the customer, deleting the customer first would fail
+        # the same way the registration itself just did.
+        if new_account is not None:
+            db.delete(new_account)
+            db.commit()
+
+        if new_customer is not None:
+            db.delete(new_customer)
+            db.commit()
+
         return None
 
     return new_user
