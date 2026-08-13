@@ -144,7 +144,7 @@ function AccountView() {
       // The backend returns the updated source balance on success, shown
       // directly so the user can see the transfer actually went through.
       setTransferMessage(
-        `${transactionType} successful. New balance: $${response.data.source_balance}`
+        `${transactionType} successful. New balance: $${response.data.balance}`
       );
       // Reset the form now that the transaction completed.
       setFromAccount("");
