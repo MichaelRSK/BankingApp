@@ -150,7 +150,7 @@ def transfer_money(transfer: TransferRequest, db: Session = Depends(get_db), cur
         "from_account_id": transfer.from_account_id,
         "to_account_id": transfer.to_account_id,
         "amount": transfer.amount,
-        "source_balance": float(source_account.get_balance()),
+        "balance": float(source_account.get_balance()),
         "destination_balance": float(destination_account.get_balance())
     }
 
