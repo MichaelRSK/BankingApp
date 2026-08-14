@@ -18,8 +18,14 @@ class User(Base):
     # unique=True is left off deliberately. A primary key is already unique,
     # and declaring both makes Alembic see a constraint in the models that is
     # not in the database and offer to add it on every autogenerate.
+    # String(120) rather than a bare String, matching customers.name.
+    #
+    # A bare String has no length at all, which PostgreSQL reads as unlimited
+    # text. The real column has always had a length, set by the migration
+    # rather than here, so the model quietly described a wider column than
+    # existed. Stating the length means the two cannot drift apart again.
     username = Column(
-        String,
+        String(120),
         nullable=False,
         primary_key=True
     )
@@ -41,8 +47,12 @@ class User(Base):
         primary_key=False
     )
 
+    # String(255) rather than a bare String, for the same reason as username,
+    # and matching customers.email, which registration writes the same address
+    # into. This column was VARCHAR(20) until ae9e35893c3e, which rejected any
+    # address over 20 characters outright and broke registration.
     email = Column(
-        String,
+        String(255),
         unique=True,
         nullable=False,
         primary_key=False
