@@ -28,7 +28,24 @@ if not DATABASE_URL:
 # queries need them. One engine for the whole application is correct, opening
 # a new connection per request would be slow.
 # echo=True would print every SQL statement, which is useful while learning.
-engine = create_engine(DATABASE_URL, echo=False)
+#
+# pool_pre_ping sends a cheap "are you still there" check before handing a
+# pooled connection to a query, and quietly replaces it if the answer is no.
+#
+# Without it, a connection that died while sitting idle in the pool is handed
+# out anyway and the request fails with
+#
+#     OperationalError: server closed the connection unexpectedly
+#
+# which surfaces to the caller as a 500. Connections do not stay alive
+# indefinitely: Supabase's pooler closes idle ones, and anything that changes
+# the network path underneath an open socket kills it too. Attaching an
+# Elastic IP to the EC2 instance did exactly that, and every request failed
+# until the service was restarted.
+#
+# The cost is one extra round trip per checkout, which is negligible next to
+# the query that follows it.
+engine = create_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
 
 # A Session is the object we run queries through, and it also tracks the
 # objects we have changed so it knows what to write on commit.
