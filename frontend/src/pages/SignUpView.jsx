@@ -91,11 +91,12 @@ export default function SignUpView() {
         email: email,
         name: name,
        
-        // The field is a string by default since it comes from a text
-        // input, the backend expects a number, so it's converted here
-        // before sending, same as AccountView.jsx does for its transfer
-        // amounts.
-        branch_code: Number(branchCode),
+        // Sent as typed, not converted. Branch codes are shown as "BR001"
+        // and the backend accepts that form as well as a plain number, so
+        // Number() here would turn "BR001" into NaN and the field would
+        // arrive empty. This is the one place that deliberately differs
+        // from AccountView.jsx, which still converts its transfer amounts.
+        branch_code: branchCode.trim(),
       });
 
       // Registration only creates the account, it doesn't hand back a
@@ -255,9 +256,12 @@ export default function SignUpView() {
             onChange: (e) => setEmail(e.target.value),
           })}
 
+          {/* type is text rather than number so "BR001" can be typed at
+              all. A number input silently refuses non-digits, which would
+              make the branch code look impossible to enter. */}
           {labeledField("Branch Code", "branchCode", {
-            type: "number",
-            placeholder: "1",
+            type: "text",
+            placeholder: "BR001",
             value: branchCode,
             onChange: (e) => setBranchCode(e.target.value),
           })}

@@ -14,6 +14,10 @@ from app.models.branch import Branch, Staff
 from app.models.account import Account
 from app.models.customer import Customer
 
+# Branch codes are stored as integers but shown as "BR001". The metrics
+# response below carries both.
+from app.core.branch_ref import format_branch_ref
+
 # This file was empty until now. Branches only existed as a plain class that
 # nothing ever stored, even though accounts and customers both referred to a
 # branch_id. These functions give branches somewhere to live, so those
@@ -96,6 +100,9 @@ def get_branch_metrics(db: Session, branch_code: int):
 
     return {
         "branch_code": branch.branch_code,
+        # The same code in the form people read, alongside the raw number so
+        # existing callers keep working.
+        "branch_ref": format_branch_ref(branch.branch_code),
         "location": branch.location,
         "manager_id": branch.manager_id,
         "customer_count": customer_count,

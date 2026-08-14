@@ -2,7 +2,9 @@
 # Depends is how FastAPI hands a database session to an endpoint.
 from fastapi import APIRouter, HTTPException, Depends
 # BaseModel is used to define the shape of the incoming request body.
-from pydantic import BaseModel
+# field_validator lets a field accept more than one spelling of the same
+# value, which is how branch_code below takes "BR001" as well as 1.
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
 # get_db opens a session for this request and closes it afterwards.
@@ -22,6 +24,10 @@ from app.services.branch_service import get_branch
 # require_role builds on it to restrict a route to specific roles.
 # CurrentUser is the object both return, holding user_id, email, and roles.
 from app.core.dependencies import get_current_user, require_role, CurrentUser
+
+# Branch codes are stored as integers but shown as "BR001". These two turn
+# one into the other.
+from app.core.branch_ref import format_branch_ref, parse_branch_ref
 
 
 # record_deposit and record_withdrawal write a history row for a single
@@ -47,6 +53,13 @@ class AccountCreateRequest(BaseModel):
     balance: float = 0  # optional, defaults to 0 if not provided
     branch_code: int = None  # optional, the branch the account belongs to
 
+    # Accepts "BR001" as well as 1, matching CustomerCreateRequest. See the
+    # note there for why mode="before" is needed.
+    @field_validator("branch_code", mode="before")
+    @classmethod
+    def _accept_branch_ref(cls, value):
+        return parse_branch_ref(value)
+
 
 # Turns an Account object into a plain dictionary for the JSON response.
 #
@@ -64,6 +77,9 @@ def account_to_response(account):
         # POLYMORPHISM: the object knows its own type, we do not check it.
         "account_type": account.account_type(),
         "branch_code": account.branch_code,
+        # The same code in the form people read, alongside the raw number so
+        # existing callers keep working. Matches customer_to_response.
+        "branch_ref": format_branch_ref(account.branch_code),
     }
 
 
@@ -113,8 +129,20 @@ def open_account(request: AccountCreateRequest, db: Session = Depends(get_db), c
 # Any authenticated user can call this, but a CUSTOMER only ever sees their
 # own accounts, staff roles see everyone's.
 @router.get("/api/v1/accounts")
-def get_filtered_accounts(branch_code: int, min_balance: float, db: Session = Depends(get_db), current_user: CurrentUser = Depends(get_current_user)):
-  
+def get_filtered_accounts(branch_code: str, min_balance: float, db: Session = Depends(get_db), current_user: CurrentUser = Depends(get_current_user)):
+
+    # Annotated as str rather than int so "BR001" reaches us intact. FastAPI
+    # would reject it before this function ran if the annotation still said
+    # int. parse_branch_ref does the conversion, and still accepts a plain
+    # number, so ?branch_code=1 works exactly as it did.
+    try:
+        branch_code = parse_branch_ref(branch_code)
+    except ValueError as exc:
+        # A query parameter is not part of a request body, so there is no
+        # pydantic model to turn this into a 422. Answering 400 here keeps
+        # the message readable instead of letting it become a 500.
+        raise HTTPException(status_code=400, detail=str(exc))
+
     # A balance cannot be negative, so neither can the minimum we filter on.
     if min_balance < 0:
         raise HTTPException(status_code=400, detail="min_balance cannot be negative")

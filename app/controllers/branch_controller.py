@@ -13,6 +13,10 @@ from app.services.branch_service import get_branch_metrics
 # it hands back once the check passes.
 from app.core.dependencies import require_role, CurrentUser
 
+# Branch codes are stored as integers but shown as "BR001". This turns the
+# displayed form back into the number the database stores.
+from app.core.branch_ref import parse_branch_ref
+
 # Create a router for branch related endpoints.
 router = APIRouter()
 
@@ -24,10 +28,19 @@ router = APIRouter()
 # information, not something a TELLER or CUSTOMER should have access to.
 @router.get("/api/v1/branches/{branch_code}/metrics")
 def get_metrics(
-    branch_code: int,
+    branch_code: str,
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(require_role("BRANCH_MANAGER", "ADMIN")),
 ):
+    # Annotated as str rather than int so /branches/BR001/metrics reaches us
+    # intact. FastAPI would answer 422 before this function ran if the
+    # annotation still said int. A plain /branches/1/metrics still works,
+    # because parse_branch_ref accepts both.
+    try:
+        branch_code = parse_branch_ref(branch_code)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
     metrics = get_branch_metrics(db, branch_code)
 
     # If the service returned None, no branch has that code.

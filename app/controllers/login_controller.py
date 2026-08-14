@@ -2,7 +2,9 @@
 # Depends is how FastAPI hands a database session to an endpoint.
 from fastapi import APIRouter, HTTPException, Depends
 # BaseModel is used to define the shape of the incoming request body.
-from pydantic import BaseModel
+# field_validator lets a field accept more than one spelling of the same
+# value, which is how branch_code below takes "BR001" as well as 1.
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
 # get_db opens a session for this request and closes it afterwards.
@@ -10,6 +12,10 @@ from app.db.session import get_db
 
 # Import the service functions that contain the actual logic.
 from app.services.login_service import attempt_login, register_user
+
+# Branch codes are stored as integers but shown as "BR001". This turns the
+# displayed form back into the number the database stores.
+from app.core.branch_ref import parse_branch_ref
 
 # Create a router for login related endpoints.
 #
@@ -52,6 +58,14 @@ class RegistrationRequest(BaseModel):
     sub: str = None
     name: str = None
     branch_code: int = None
+
+    # Accepts "BR001" as well as 1, so someone signing up can type the branch
+    # code exactly as it appears on the branch's paperwork. See
+    # CustomerCreateRequest for why mode="before" is needed.
+    @field_validator("branch_code", mode="before")
+    @classmethod
+    def _accept_branch_ref(cls, value):
+        return parse_branch_ref(value)
 
 # POST /api/v1/login
 # Exchanges a username and password for a signed access token.

@@ -2,7 +2,9 @@
 # Depends is how FastAPI hands a database session to an endpoint.
 from fastapi import APIRouter, HTTPException, Depends
 # BaseModel is used to define the shape of the incoming request body.
-from pydantic import BaseModel
+# field_validator lets a field accept more than one spelling of the same
+# value, which is how branch_code below takes "BR001" as well as 1.
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
 # get_db opens a session for this request and closes it afterwards.
@@ -23,6 +25,10 @@ from app.services.customer_service import (
 # CurrentUser is the object both return, holding user_id, email, and roles.
 from app.core.dependencies import get_current_user, require_role, CurrentUser
 
+# Branch codes are stored as integers but shown as "BR001". These two turn
+# one into the other.
+from app.core.branch_ref import format_branch_ref, parse_branch_ref
+
 
 # Create a router for customer related endpoints.
 router = APIRouter()
@@ -37,6 +43,17 @@ class CustomerCreateRequest(BaseModel):
     # Points at branches.branch_code, the branch table's primary key. This
     # was a str before and never lined up with the accounts table.
     branch_code: int = None
+
+    # Accepts "BR001" as well as 1, so a caller can send back the same code
+    # the API showed them instead of having to strip the prefix first.
+    #
+    # mode="before" is what makes that possible: it runs while the value is
+    # still the raw string from the JSON, ahead of the int conversion the
+    # annotation above would otherwise fail on.
+    @field_validator("branch_code", mode="before")
+    @classmethod
+    def _accept_branch_ref(cls, value):
+        return parse_branch_ref(value)
 
 
 # Defines what the request body must look like when updating a customer.
@@ -53,6 +70,10 @@ def customer_to_response(customer):
         "name": customer.name,
         "email": customer.email,
         "branch_code": customer.branch_code,
+        # The same code in the form people read. Sent alongside the raw
+        # number rather than replacing it, so existing callers that already
+        # read branch_code keep working unchanged.
+        "branch_ref": format_branch_ref(customer.branch_code),
         "is_active": customer.is_active,
     }
 
