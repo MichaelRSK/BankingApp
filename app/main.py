@@ -37,6 +37,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
+    allow_origins=["https://d20pwiigykx2hu.cloudfront.net"],
     allow_credentials=True,
     allow_methods=["*"],  # Allows POST, OPTIONS, GET, etc.
     allow_headers=["*"],  # Allows custom headers like Content-Type
