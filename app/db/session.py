@@ -45,7 +45,31 @@ if not DATABASE_URL:
 #
 # The cost is one extra round trip per checkout, which is negligible next to
 # the query that follows it.
-engine = create_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
+#
+# pool_size and max_overflow are set explicitly because the defaults are too
+# large for Supabase. SQLAlchemy defaults to 5 connections plus 10 overflow,
+# and Supabase's session mode pooler allows 15 clients in total, so a single
+# engine at full stretch can consume the entire quota and lock out every
+# other client, including psql and a second copy of the app. 5 plus 5 leaves
+# headroom while still being far more concurrency than this app needs.
+#
+# prepare_threshold=None disables psycopg's automatic prepared statements.
+#
+# They have to be off when talking to a transaction mode pooler (port 6543),
+# because it hands each transaction whichever backend is free. A statement
+# prepared on one backend does not exist on the next, and the query fails
+# with "prepared statement does not exist". Disabling them costs a little
+# planning time per query and is what makes transaction mode usable at all.
+# It is harmless in session mode, so it is set unconditionally rather than
+# guessing the mode from the port number.
+engine = create_engine(
+    DATABASE_URL,
+    echo=False,
+    pool_pre_ping=True,
+    pool_size=5,
+    max_overflow=5,
+    connect_args={"prepare_threshold": None},
+)
 
 # A Session is the object we run queries through, and it also tracks the
 # objects we have changed so it knows what to write on commit.
