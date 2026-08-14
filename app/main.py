@@ -36,10 +36,13 @@ app = FastAPI()
 # in. A production origin would be added to allow_origins explicitly.
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=[
+        "https://d31ozi0a2jr0ba.cloudfront.net",
+    ],
     allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
     allow_credentials=True,
-    allow_methods=["*"],  # Allows POST, OPTIONS, GET, etc.
-    allow_headers=["*"],  # Allows custom headers like Content-Type
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
