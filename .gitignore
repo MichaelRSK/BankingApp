@@ -1,0 +1,31 @@
+# Byte-compiled / cached Python files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Test and coverage output
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editor and OS files
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+
+# node packages
+node_modules/
+package-lock.json
+package.json

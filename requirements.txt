@@ -1,0 +1,39 @@
+# Install everything in this file with:
+#   pip install -r requirements.txt
+
+# The web framework and the server that runs it.
+fastapi>=0.136.1
+uvicorn>=0.46.0
+
+# Validates and shapes the request/response bodies in the controllers.
+pydantic>=2.13.3
+
+# The ORM. It maps our Python classes onto database tables so the services
+# can work with objects instead of writing SQL by hand.
+SQLAlchemy>=2.0.51
+
+# The PostgreSQL driver SQLAlchemy talks through. This is psycopg3, and the
+# [binary] part pulls in a prebuilt version so nothing has to be compiled.
+psycopg[binary]>=3.3.4
+
+# Handles database migrations, which are versioned changes to the table
+# structure. Alembic can generate them by comparing our models to the
+# database and can roll them forward or back.
+alembic>=1.19.1
+
+# Reads the DATABASE_URL out of the .env file so credentials stay out of
+# the source code.
+python-dotenv>=1.2.2
+
+# Signs and verifies the JWT access tokens issued at login. This is the
+# library FastAPI's own security documentation uses.
+PyJWT>=2.10.1
+
+# Hashes passwords before they are stored, and checks a typed password
+# against a stored hash at login. The salt lives inside the hash.
+bcrypt>=4.2.1
+
+# An alternative JWT implementation. Nothing imports it now that token
+# creation is centralised in app/core/security.py on PyJWT, so this can be
+# removed once the team agrees.
+python-jose[cryptography]>=3.3.0

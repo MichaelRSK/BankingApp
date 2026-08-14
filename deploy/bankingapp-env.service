@@ -1,0 +1,37 @@
+# Fetches secrets from Parameter Store into /etc/bankingapp/env.
+#
+# This is a separate unit from bankingapp.service on purpose. systemd reads
+# an EnvironmentFile when the service starts, so a script that generates that
+# file cannot live in the same unit as ExecStartPre and be reliably picked up
+# on the first start. Splitting it into its own unit makes the ordering
+# explicit: this one finishes, then the app starts and reads the fresh file.
+#
+# Install to /etc/systemd/system/bankingapp-env.service
+
+[Unit]
+Description=Fetch BankingApp secrets from AWS Parameter Store
+# The script calls the SSM API, so it needs working networking. Plain
+# network.target only means "networking is being configured", which is not
+# the same as "an address exists and routes work".
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# oneshot plus RemainAfterExit means systemd runs this once, waits for it to
+# finish, and then treats it as active. That is what lets bankingapp.service
+# depend on it and be sure the file is there.
+Type=oneshot
+RemainAfterExit=yes
+
+# Runs as root because it writes to /etc and reads decrypted secrets.
+User=root
+
+ExecStart=/usr/local/bin/fetch-ssm-env.sh
+
+# If the instance boots before its network or IAM role is ready, the SSM call
+# fails. Retry rather than leaving the app permanently down.
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
